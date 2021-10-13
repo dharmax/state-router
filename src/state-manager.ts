@@ -1,5 +1,5 @@
-import {Router} from "../services/router";
-import dispatcher from "./dispatcher";
+import {router, RoutingMode} from "./router";
+import  dispatcher from "@dharmax/pubsub";
 
 export type ApplicationStateName = string
 
@@ -11,16 +11,16 @@ export type ApplicationState = {
 }
 
 
-class StateManager {
+export class StateManager {
     private allStates: { [name: string]: ApplicationState } = {}
     private appState: ApplicationState
-    private previousState
-    private stateContext
+    private previousState: ApplicationState
+    private stateContext: ApplicationState
 
-    constructor(mode: 'hash' | 'history' = 'hash') {
+    constructor(mode: RoutingMode = 'hash') {
 
-        Router.config({mode})
-        Router.listen()
+        router.mode = mode
+        router.listen()
 
     }
 
@@ -52,7 +52,7 @@ class StateManager {
         let dest = window.location.hash
         if (dest == '#login' || dest == '')
             dest = '#' + defaultState
-        Router.navigate(dest)
+        router.navigate(dest)
     }
 
     /**
@@ -71,7 +71,7 @@ class StateManager {
         this.previousState = this.appState
         this.stateContext = context
         this.appState = newState
-        dispatcher.trigger('stateName manager', 'state', 'changed', this.appState)
+        dispatcher.trigger('state-manager', 'state', 'changed', this.appState)
         return true
     }
 
@@ -100,7 +100,7 @@ class StateManager {
 
     registerStateByState(state: ApplicationState) {
         this.allStates[state.name] = state
-        Router.add(state.route, context => {
+        router.add(state.route, (context:any) => {
             if (this.setState(state.name, context)) {
 
                 // @ts-ignore

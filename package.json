@@ -25,5 +25,8 @@
   "homepage": "https://github.com/dharmax/state-routerr",
   "devDependencies": {
     "typescript": "^4.4.3"
+  },
+  "dependencies": {
+    "@dharmax/pubsub": "^1.0.1"
   }
 }
