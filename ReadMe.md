@@ -19,7 +19,7 @@ each state can be given a logical name, route and an associated page/component.
     stateManager.addState('main', 'main-page', /main$/);
     stateManager.addState('login', 'login-box', 'login')
     stateManager.addState('signup', 'signup-box', /signup/)
-    stateManager.addState('my-profile')
+    stateManager.addState('my-profile') // will assume the page name and the route are the same...
     stateManager.addState('inbox')
     stateManager.addState('about')
     stateManager.addState('discussion', 'discussion-page', 'discussion/%')
