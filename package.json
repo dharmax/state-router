@@ -1,0 +1,29 @@
+{
+  "name": "@dharmax/state-router",
+  "version": "1.0.1",
+  "description": "A cute and tight router and application state controller",
+  "main": "dist/router.js",
+  "types": "dist/router.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc",
+    "prepublish": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dharmax/state-router.git"
+  },
+  "keywords": [
+    "router",
+    "state"
+  ],
+  "author": "Avi Tshuva, dharmax",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dharmax/state-router/issues"
+  },
+  "homepage": "https://github.com/dharmax/state-routerr",
+  "devDependencies": {
+    "typescript": "^4.4.3"
+  }
+}
