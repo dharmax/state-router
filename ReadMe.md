@@ -31,7 +31,7 @@ In your main component, you write something like that:
 
 ```javascript
 
-dispatcher.on('state:changed', event => {
+stateManager.onChange( event => {
     // this specific example works with RiotJs, but you get the drift
     this.update({
         currentPage: event.data.pageName

@@ -1,5 +1,6 @@
 import {router, RoutingMode} from "./router";
-import  dispatcher from "@dharmax/pubsub";
+import dispatcher, {IPubSubHandle, PubSubEvent} from "@dharmax/pubsub";
+
 
 export type ApplicationStateName = string
 
@@ -17,11 +18,18 @@ export class StateManager {
     private previousState: ApplicationState
     private stateContext: ApplicationState
 
+    public static dispatcher = dispatcher
+
     constructor(mode: RoutingMode = 'hash') {
 
         router.mode = mode
         router.listen()
 
+    }
+
+    onChange(handler: (event: PubSubEvent, data: any) => void):IPubSubHandle {
+
+        return StateManager.dispatcher.on('state:changed', handler)
     }
 
     getState(): ApplicationState {
@@ -100,7 +108,7 @@ export class StateManager {
 
     registerStateByState(state: ApplicationState) {
         this.allStates[state.name] = state
-        router.add(state.route, (context:any) => {
+        router.add(state.route, (context: any) => {
             if (this.setState(state.name, context)) {
 
                 // @ts-ignore
