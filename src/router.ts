@@ -2,7 +2,7 @@ class Route {
     constructor() {
     }
 
-    re: RegExp  = null
+    re: RegExp = null
     handler: Function = null
 }
 
@@ -13,9 +13,9 @@ export const router = new class {
     routes: Route[] = []
     root = '/'
 
-    baseLocation: string | null= null;
+    baseLocation: string | null = null;
 
-    resetRoot ( root:string) {
+    resetRoot(root: string) {
         this.root = '/' + this.clearSlashes(root) + '/';
     }
 
@@ -49,7 +49,7 @@ export const router = new class {
         return `${a[0]}#${afterHash}`
     }
 
-    add(re: Function | RegExp, handler: Function ) {
+    add(re: Function | RegExp, handler: Function) {
         if (typeof re == 'function') {
             handler = re;
             re = null;
@@ -58,7 +58,7 @@ export const router = new class {
         return this;
     }
 
-     process(location?:string) {
+    process(location?: string) {
         const fragment = location || this.getLocation();
         const matches = this.routes.filter((r: any) => fragment.match(r.re))
 
