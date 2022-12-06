@@ -3,7 +3,7 @@ declare class Route {
     re: RegExp;
     handler: Function;
 }
-export declare type RoutingMode = 'history' | 'hash';
+export type RoutingMode = 'history' | 'hash';
 export declare const router: {
     mode: RoutingMode;
     routes: Route[];
