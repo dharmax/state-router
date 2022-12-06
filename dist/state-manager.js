@@ -57,7 +57,7 @@ export class StateManager {
         }
         // check if the state change was declined by any change authority and if so - don't do it and return false
         const changeConfirmations = await Promise.all(this.changeAuthorities.map(a => a(newState)));
-        if (changeConfirmations.find(c => c === false))
+        if (changeConfirmations.includes(false))
             return false;
         // perform the change
         this.previousState = this.appState;

@@ -1,6 +1,6 @@
 {
   "name": "@dharmax/state-router",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A cute and tight router and application state controller",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
