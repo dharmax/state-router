@@ -88,8 +88,8 @@ export class StateManager {
         }
 
         // check if the state change was declined by any change authority and if so - don't do it and return false
-        const changeConfirmations = await Promise.all(this.changeAuthorities.map( authority => authority(newState) ))
-        if (changeConfirmations.find( c => c === false))
+        const changeConfirmations = await Promise.all(this.changeAuthorities.map(authority => authority(newState)))
+        if (changeConfirmations.includes(false))
             return false
 
         // perform the change
