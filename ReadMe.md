@@ -12,7 +12,7 @@ each state can be given a logical name, route and an associated page/component.
 
 # Features
 * Very easy to use
-* Purely Functional - no need for anything by simple JS 
+* Purely Functional - no need for anything but super simple JS 
 * Only one tiny dependency 
 * Easily allow any authorization logic to be used 
 * Tiny footprint
