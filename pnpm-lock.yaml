@@ -1,0 +1,27 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+dependencies:
+  '@dharmax/pubsub':
+    specifier: ^1.0.1
+    version: 1.0.1
+
+devDependencies:
+  typescript:
+    specifier: ^4.9.5
+    version: 4.9.5
+
+packages:
+
+  /@dharmax/pubsub@1.0.1:
+    resolution: {integrity: sha512-W4CLQBmZyg/oUe4nHw0yApvGwjqm7+in3Xt2J28HO0uDDfZIGtiEB7rbvGeaWfXiMBiB0ptvctzLn+CKMHykIQ==}
+    dev: false
+
+  /typescript@4.9.5:
+    resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
+    engines: {node: '>=4.2.0'}
+    hasBin: true
+    dev: true

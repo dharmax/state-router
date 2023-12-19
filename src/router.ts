@@ -8,7 +8,7 @@ interface Route {
 export type RoutingMode = 'history' | 'hash';
 
 class Router {
-    private mode: RoutingMode = 'hash';
+    mode: RoutingMode = 'hash';
     private routes: Route[] = [];
     private root: string = '/';
     private baseLocation: string | null = null;
@@ -81,7 +81,7 @@ class Router {
         return this;
     }
 
-    private listen(): void {
+    listen(): void {
         const currentLocation = this.getLocation();
         if (this.baseLocation !== currentLocation) {
             this.baseLocation = currentLocation;
