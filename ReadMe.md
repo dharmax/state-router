@@ -10,6 +10,12 @@ Together with the state manager - which will be the main object you'd need
 to work with, you get a very simple semantic application state management: 
 each state can be given a logical name, route and an associated page/component.
 
+The router by default ignores file extensions '.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp','md'
+and you can access the router's staticFilters member to replace or add other rules
+for static serving support.
+
+you can use the hash notation or not (set the router's mode to 'history' or 'hash')
+
 
 # Example
 

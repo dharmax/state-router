@@ -1,108 +1,102 @@
-class Route {
-    constructor() {
-    }
+type RouteHandler = (...args: string[]) => void;
 
-    re: RegExp  = null
-    handler: Function = null
+interface Route {
+    pattern: RegExp | null;
+    handler: RouteHandler;
 }
 
-export type RoutingMode = 'history' | 'hash'
-export const router = new class {
+export type RoutingMode = 'history' | 'hash';
 
-    mode: RoutingMode = 'hash'
-    routes: Route[] = []
-    root = '/'
+class Router {
+    private mode: RoutingMode = 'hash';
+    private routes: Route[] = [];
+    private root: string = '/';
+    private baseLocation: string | null = null;
+    public staticFilters:((url:string) => boolean)[] = []
 
-    baseLocation: string | null= null;
+    constructor() {
+        this.staticFilters.push( url => {
+            const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp','md'];
+            return staticFileExtensions.some(ext => url.endsWith(ext));
 
-    resetRoot ( root:string) {
+        })
+        window.addEventListener(this.mode === 'hash' ? 'hashchange' : 'popstate', this.listen.bind(this));
+    }
+
+    private clearSlashes(path: string): string {
+        return path.replace(/\/$/, '').replace(/^\//, '');
+    }
+
+    private clearQuery(url: string): string {
+        const [path, query] = url.split('?');
+        if (!query) return path;
+        const [_, hash] = query.split('#');
+        return hash ? `${path}#${hash}` : path;
+    }
+
+    private isStaticFile(url: string): boolean {
+        return (this.staticFilters || []).some(  filter => filter(url))
+    }
+
+    public resetRoot(root: string): void {
         this.root = '/' + this.clearSlashes(root) + '/';
     }
 
-
-    getLocation() {
-        let fragment = '';
+    public getLocation(): string {
         if (this.mode === 'history') {
-            fragment = this.clearSlashes(decodeURI(location.pathname + location.search));
-            fragment = this.clearQuery(fragment)
-            fragment = fragment.replace(/\?(.*)$/, '');
-            fragment = this.root != '/' ? fragment.replace(this.root, '') : fragment;
+            let fragment = this.clearSlashes(decodeURI(window.location.pathname + window.location.search));
+            fragment = this.clearQuery(fragment);
+            return this.root !== '/' ? fragment.replace(this.root, '') : fragment;
         } else {
             const match = window.location.href.match(/#(.*)$/);
-            fragment = this.clearQuery(fragment)
-            fragment = match ? match[1] : '';
+            return match ? this.clearQuery(match[1]) : '';
         }
-        return this.clearSlashes(fragment);
     }
 
-    clearSlashes(path: string): string {
-        return path.toString().replace(/\/$/, '').replace(/^\//, '');
-    }
-
-    clearQuery(url: string): string {
-        if (url.indexOf('?') === -1)
-            return url
-        const a = url.split('?')
-        const afterHash = a[1].split('#')
-        if (!afterHash)
-            return a[0]
-        return `${a[0]}#${afterHash}`
-    }
-
-    add(re: Function | RegExp, handler: Function ) {
-        if (typeof re == 'function') {
-            handler = re;
-            re = null;
+    public add(pattern: RegExp | RouteHandler, handler?: RouteHandler): Router {
+        if (typeof pattern === 'function') {
+            handler = pattern;
+            pattern = /^.*$/; // Match any path
         }
-        this.routes.push({re: re as RegExp, handler});
+        this.routes.push({ pattern, handler: handler as RouteHandler });
         return this;
     }
 
-     process(location?:string) {
-        const fragment = location || this.getLocation();
-        const matches = this.routes.filter((r: any) => fragment.match(r.re))
+    public process(location?: string): Router {
+        const path = location || this.getLocation();
+        if (this.isStaticFile(path))
+            return this; // Bypass routing for static files
 
-            .sort((r1, r2) => {
-                    const [n1, n2] = [r1, r2].map(r => r.re.source.split('/'))
-                    return n2.length - n1.length
-                }
-            )
-            .map(r => {
-                return {r, match: fragment.match(r.re)}
-            });
-        if (!matches.length) {
-            console.warn(`No routing found for ${fragment}`)
-            return
-        }
 
-        const longestMatch = matches[0]
-        longestMatch.match.shift()
-        longestMatch.r.handler.apply({}, longestMatch.match)
-        return this;
-    }
-
-    listen() {
-        this.baseLocation = this.getLocation();
-        window[this.mode === 'hash' ? 'onhashchange' : 'onpopstate'] = () => {
-            const place = this.getLocation();
-            if (this.baseLocation !== place) {
-                this.baseLocation = place;
-                this.process(place);
+        for (const route of this.routes) {
+            const match = path.match(route.pattern);
+            if (match) {
+                match.shift(); // Remove the full match element
+                route.handler.apply({}, match);
+                return this;
             }
         }
+
+        console.warn(`No routing found for ${path}`);
         return this;
     }
 
-    navigate(path?: string) {
-        path = path ? path : '';
+    private listen(): void {
+        const currentLocation = this.getLocation();
+        if (this.baseLocation !== currentLocation) {
+            this.baseLocation = currentLocation;
+            this.process(currentLocation);
+        }
+    }
+
+    public navigate(path: string = ''): Router {
         if (this.mode === 'history') {
             history.pushState(null, null, this.root + this.clearSlashes(path));
         } else {
-            path = path.startsWith('#') ? path : '#' + path
-            window.location.href = window.location.href.replace(/#(.*)$/, '') + path;
-            this.process()
+            window.location.hash = '#' + this.clearSlashes(path);
         }
         return this;
     }
 }
 
+export const router = new Router();
