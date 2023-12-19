@@ -7,14 +7,17 @@ export type ApplicationState = {
     route: RegExp;
     mode?: string | string[];
 };
+export type ChangeAuthority = (state: ApplicationState) => Promise<boolean>;
 export declare class StateManager {
     private allStates;
     private appState;
     private previousState;
     private stateContext;
-    static dispatcher: import("@dharmax/pubsub").Pubsub;
+    static dispatcher: import("@dharmax/pubsub").PubSub;
+    private changeAuthorities;
     constructor(mode?: RoutingMode);
     onChange(handler: (event: PubSubEvent, data: any) => void): IPubSubHandle;
+    registerChangeAuthority(authorityCallback: (targetState: ApplicationState) => Promise<boolean>): void;
     getState(): ApplicationState;
     get previous(): ApplicationState;
     get context(): ApplicationState;
@@ -23,14 +26,14 @@ export declare class StateManager {
      * @param state can be either just a state or a state and context (which can be sub-state, or anything else)
      */
     set state(state: ApplicationStateName | [ApplicationStateName, any]);
-    /** attempts to restore state from current url */
+    /** attempts to restore state from current url. Currently, works only in hash mode */
     restoreState(defaultState: ApplicationStateName): void;
     /**
      *
      * @param stateName state
      * @param context extra context (e.g. sub-state)
      */
-    setState(stateName: ApplicationStateName, context?: any): boolean;
+    setState(stateName: ApplicationStateName, context?: any): Promise<boolean>;
     /**
      * Define an application state
      * @param name

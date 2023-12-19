@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@dharmax/pubsub':
-    specifier: ^1.0.1
-    version: 1.0.1
+    specifier: ^1.1.0
+    version: 1.1.0
 
 devDependencies:
   typescript:
@@ -16,8 +16,8 @@ devDependencies:
 
 packages:
 
-  /@dharmax/pubsub@1.0.1:
-    resolution: {integrity: sha512-W4CLQBmZyg/oUe4nHw0yApvGwjqm7+in3Xt2J28HO0uDDfZIGtiEB7rbvGeaWfXiMBiB0ptvctzLn+CKMHykIQ==}
+  /@dharmax/pubsub@1.1.0:
+    resolution: {integrity: sha512-CRDnY29Dle/gyQ0k1JPHXF0C4gNmoUdmiaYB/tXW3hDf/BD6ervwZREu6TQNH/ohe6eCR5Muy76t66ZmMtI+jQ==}
     dev: false
 
   /typescript@4.9.5:

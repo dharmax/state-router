@@ -28,6 +28,6 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "@dharmax/pubsub": "^1.0.1"
+    "@dharmax/pubsub": "^1.1.0"
   }
 }
