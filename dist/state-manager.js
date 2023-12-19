@@ -8,8 +8,7 @@ export class StateManager {
     static dispatcher = dispatcher;
     changeAuthorities = [];
     constructor(mode = 'hash') {
-        router.mode = mode;
-        router.listen();
+        router.listen(mode);
     }
     onChange(handler) {
         return StateManager.dispatcher.on('state:changed', handler);

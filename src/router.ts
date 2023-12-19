@@ -8,7 +8,7 @@ interface Route {
 export type RoutingMode = 'history' | 'hash';
 
 class Router {
-    mode: RoutingMode = 'hash';
+    private mode: RoutingMode = 'hash';
     private routes: Route[] = [];
     private root: string = '/';
     private baseLocation: string | null = null;
@@ -16,14 +16,15 @@ class Router {
 
     constructor() {
         this.staticFilters.push(url => {
-            const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp', 'md'];
+            const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp', '.md', '.ejs', '.jsm', '.txt'];
             return staticFileExtensions.some(ext => url.endsWith(ext));
 
         })
     }
 
-    private clearSlashes(path: string): string {
-        return path.replace(/\/$/, '').replace(/^\//, '');
+    private cleanPathString(path: string): string {
+        path = path.replace(/\/$/, '').replace(/^\//, '');
+        return path = path.replace(/#{2,}/g, '#');
     }
 
     private clearQuery(url: string): string {
@@ -38,12 +39,12 @@ class Router {
     }
 
     public resetRoot(root: string): void {
-        this.root = '/' + this.clearSlashes(root) + '/';
+        this.root = '/' + this.cleanPathString(root) + '/';
     }
 
     public getLocation(): string {
         if (this.mode === 'history') {
-            let fragment = this.clearSlashes(decodeURI(window.location.pathname + window.location.search));
+            let fragment = this.cleanPathString(decodeURI(window.location.pathname + window.location.search));
             fragment = this.clearQuery(fragment);
             return this.root !== '/' ? fragment.replace(this.root, '') : fragment;
         } else {
@@ -80,24 +81,54 @@ class Router {
         return this;
     }
 
-    listen(): void {
-        window.addEventListener(this.mode === 'hash' ? 'hashchange' : 'popstate', () => {
-            if ( this.isStaticFile(location.href))
-                return
-            const currentLocation = this.getLocation();
-            if (this.baseLocation !== currentLocation) {
-                this.baseLocation = currentLocation;
-                this.handleChange(currentLocation);
-            }
-        });
+    listen(mode: RoutingMode = 'hash'): void {
+        const self = this
+        this.mode = mode
+        switch (mode) {
+            case "hash":
+                window.addEventListener('hashchange', () => handler())
+                break
+            case "history":
+                window.addEventListener('popstate', event => handler(event.state?.path));
+                document.addEventListener('click', handleInternalNavigation);
+                document.addEventListener('keydown', event => {
+                    // @ts-ignore
+                    if (event.key === 'Enter' && event.target.tagName === 'A')
+                        handleInternalNavigation(event);
+                });
+        }
 
+        function handleInternalNavigation(event: any) {
+            const node = event.target
+            const href = node.getAttribute('href')
+            if (href) {
+                event.preventDefault();
+                history.pushState({path: href}, '', href);
+                handler(href);
+            }
+        }
+
+        function handler(path?: string) {
+            path = path || location.href.split('#')[0]
+
+            if (self.isStaticFile(path))
+                return
+            const currentLocation = self.getLocation();
+            if (self.baseLocation !== currentLocation) {
+                self.baseLocation = currentLocation;
+                self.handleChange(currentLocation);
+            }
+        }
+
+        handler()
     }
 
-    public navigate(path: string = ''): Router {
+
+    navigate(path: string = ''): Router {
         if (this.mode === 'history') {
-            history.pushState(null, null, this.root + this.clearSlashes(path));
+            history.pushState(null, null, this.root + this.cleanPathString(path));
         } else {
-            window.location.hash = '#' + this.clearSlashes(path);
+            window.location.hash = '#' + this.cleanPathString(path);
         }
         return this;
     }

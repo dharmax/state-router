@@ -1,0 +1,21 @@
+
+<html>
+
+<a href="#one">one</a>
+<a href="#two">two</a>
+<a href="three.json">three</a>
+<a href="four">two</a>
+
+<script type="module">
+    import {router} from '../dist/router.js'
+    // router.mode ='history'
+    router.add('one', ()=>alert(1))
+    router.add('two', ()=>alert(2))
+    router.add('four', ()=>alert(4))
+    // router.add('one', ()=>alert(1))
+    router.listen('history')
+
+
+</script>
+
+</html>

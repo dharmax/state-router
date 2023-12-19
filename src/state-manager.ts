@@ -24,8 +24,7 @@ export class StateManager {
 
     constructor(mode: RoutingMode = 'hash') {
 
-        router.mode = mode
-        router.listen()
+        router.listen(mode)
 
     }
 
