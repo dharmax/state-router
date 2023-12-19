@@ -1,9 +1,10 @@
 {
   "name": "@dharmax/state-router",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A cute and tight router and application state controller",
-  "main": "dist/router.js",
-  "types": "dist/router.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",
