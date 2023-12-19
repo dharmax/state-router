@@ -42,10 +42,9 @@ export class StateManager {
     }
     /** attempts to restore state from current url. Currently, works only in hash mode */
     restoreState(defaultState) {
-        let dest = window.location.hash;
-        if (dest == '#login' || dest == '')
-            dest = '#' + defaultState;
-        router.navigate(dest);
+        if (router.navigate(window.location.pathname))
+            return;
+        router.navigate(defaultState);
     }
     /**
      *

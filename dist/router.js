@@ -46,20 +46,25 @@ class Router {
         this.routes.push({ pattern, handler: handler });
         return this;
     }
+    /**
+     *
+     * @param location
+     * @return true if it was intercepted or false if not handled
+     */
     handleChange(location) {
         const path = location || this.getLocation();
         if (this.isStaticFile(path))
-            return this; // Bypass routing for static files
+            return false; // Bypass routing for static files
         for (const route of this.routes) {
             const match = path.match(route.pattern);
             if (match) {
                 match.shift(); // Remove the full match element
                 route.handler.apply({}, match);
-                return this;
+                return true;
             }
         }
         console.warn(`No routing found for ${path}`);
-        return this;
+        return false;
     }
     listen(mode = 'hash') {
         const self = this;
@@ -99,13 +104,11 @@ class Router {
         handler();
     }
     navigate(path = '') {
-        if (this.mode === 'history') {
+        if (this.mode === 'history')
             history.pushState(null, null, this.root + this.cleanPathString(path));
-        }
-        else {
-            window.location.hash = '#' + this.cleanPathString(path);
-        }
-        return this;
+        else
+            window.location.hash = this.cleanPathString(path);
+        return this.handleChange();
     }
 }
 export const router = new Router();

@@ -13,9 +13,14 @@ declare class Router {
     resetRoot(root: string): void;
     getLocation(): string;
     add(pattern: RegExp | RouteHandler, handler?: RouteHandler): Router;
-    handleChange(location?: string): Router;
+    /**
+     *
+     * @param location
+     * @return true if it was intercepted or false if not handled
+     */
+    handleChange(location?: string): boolean;
     listen(mode?: RoutingMode): void;
-    navigate(path?: string): Router;
+    navigate(path?: string): boolean;
 }
 export declare const router: Router;
 export {};
