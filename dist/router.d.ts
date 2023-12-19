@@ -13,7 +13,7 @@ declare class Router {
     resetRoot(root: string): void;
     getLocation(): string;
     add(pattern: RegExp | RouteHandler, handler?: RouteHandler): Router;
-    process(location?: string): Router;
+    handleChange(location?: string): Router;
     listen(): void;
     navigate(path?: string): Router;
 }

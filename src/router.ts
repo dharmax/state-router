@@ -12,15 +12,14 @@ class Router {
     private routes: Route[] = [];
     private root: string = '/';
     private baseLocation: string | null = null;
-    public staticFilters:((url:string) => boolean)[] = []
+    public staticFilters: ((url: string) => boolean)[] = []
 
     constructor() {
-        this.staticFilters.push( url => {
-            const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp','md'];
+        this.staticFilters.push(url => {
+            const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp', 'md'];
             return staticFileExtensions.some(ext => url.endsWith(ext));
 
         })
-        window.addEventListener(this.mode === 'hash' ? 'hashchange' : 'popstate', this.listen.bind(this));
     }
 
     private clearSlashes(path: string): string {
@@ -35,7 +34,7 @@ class Router {
     }
 
     private isStaticFile(url: string): boolean {
-        return (this.staticFilters || []).some(  filter => filter(url))
+        return (this.staticFilters || []).some(filter => filter(url))
     }
 
     public resetRoot(root: string): void {
@@ -58,11 +57,11 @@ class Router {
             handler = pattern;
             pattern = /^.*$/; // Match any path
         }
-        this.routes.push({ pattern, handler: handler as RouteHandler });
+        this.routes.push({pattern, handler: handler as RouteHandler});
         return this;
     }
 
-    public process(location?: string): Router {
+    public handleChange(location?: string): Router {
         const path = location || this.getLocation();
         if (this.isStaticFile(path))
             return this; // Bypass routing for static files
@@ -82,11 +81,16 @@ class Router {
     }
 
     listen(): void {
-        const currentLocation = this.getLocation();
-        if (this.baseLocation !== currentLocation) {
-            this.baseLocation = currentLocation;
-            this.process(currentLocation);
-        }
+        window.addEventListener(this.mode === 'hash' ? 'hashchange' : 'popstate', () => {
+            if ( this.isStaticFile(location.href))
+                return
+            const currentLocation = this.getLocation();
+            if (this.baseLocation !== currentLocation) {
+                this.baseLocation = currentLocation;
+                this.handleChange(currentLocation);
+            }
+        });
+
     }
 
     public navigate(path: string = ''): Router {

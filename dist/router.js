@@ -9,7 +9,6 @@ class Router {
             const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp', 'md'];
             return staticFileExtensions.some(ext => url.endsWith(ext));
         });
-        window.addEventListener(this.mode === 'hash' ? 'hashchange' : 'popstate', this.listen.bind(this));
     }
     clearSlashes(path) {
         return path.replace(/\/$/, '').replace(/^\//, '');
@@ -46,7 +45,7 @@ class Router {
         this.routes.push({ pattern, handler: handler });
         return this;
     }
-    process(location) {
+    handleChange(location) {
         const path = location || this.getLocation();
         if (this.isStaticFile(path))
             return this; // Bypass routing for static files
@@ -62,11 +61,15 @@ class Router {
         return this;
     }
     listen() {
-        const currentLocation = this.getLocation();
-        if (this.baseLocation !== currentLocation) {
-            this.baseLocation = currentLocation;
-            this.process(currentLocation);
-        }
+        window.addEventListener(this.mode === 'hash' ? 'hashchange' : 'popstate', () => {
+            if (this.isStaticFile(location.href))
+                return;
+            const currentLocation = this.getLocation();
+            if (this.baseLocation !== currentLocation) {
+                this.baseLocation = currentLocation;
+                this.handleChange(currentLocation);
+            }
+        });
     }
     navigate(path = '') {
         if (this.mode === 'history') {
