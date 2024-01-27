@@ -21,10 +21,14 @@ export class StateManager {
     public static dispatcher = dispatcher
     private changeAuthorities: ChangeAuthority[] = [];
 
-    constructor(mode: RoutingMode = 'hash') {
+    constructor(private mode: RoutingMode = 'hash', autostart= true) {
 
-        router.listen(mode)
+        if (autostart)
+            router.listen(mode)
+    }
 
+    start() {
+        router.listen( this.mode )
     }
 
     onChange(handler: (event: PubSubEvent, data: any) => void): IPubSubHandle {
