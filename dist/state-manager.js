@@ -1,14 +1,20 @@
 import { router } from "./router";
 import dispatcher from "@dharmax/pubsub";
 export class StateManager {
+    mode;
     allStates = {};
     appState;
     previousState;
     stateContext;
     static dispatcher = dispatcher;
     changeAuthorities = [];
-    constructor(mode = 'hash') {
-        router.listen(mode);
+    constructor(mode = 'hash', autostart = true) {
+        this.mode = mode;
+        if (autostart)
+            router.listen(mode);
+    }
+    start() {
+        router.listen(this.mode);
     }
     onChange(handler) {
         return StateManager.dispatcher.on('state:changed', handler);

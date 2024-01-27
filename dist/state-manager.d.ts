@@ -9,13 +9,15 @@ export type ApplicationState = {
 };
 export type ChangeAuthority = (state: ApplicationState) => Promise<boolean>;
 export declare class StateManager {
+    private mode;
     private allStates;
     private appState;
     private previousState;
     private stateContext;
     static dispatcher: import("@dharmax/pubsub").PubSub;
     private changeAuthorities;
-    constructor(mode?: RoutingMode);
+    constructor(mode?: RoutingMode, autostart?: boolean);
+    start(): void;
     onChange(handler: (event: PubSubEvent, data: any) => void): IPubSubHandle;
     registerChangeAuthority(authorityCallback: (targetState: ApplicationState) => Promise<boolean>): void;
     getState(): ApplicationState;
