@@ -46,4 +46,3 @@ export declare class StateManager {
     addState(name: string, pageName?: string, route?: RegExp | string, mode?: string | string[]): void;
     registerStateByState(state: ApplicationState): void;
 }
-export declare const stateManager: StateManager;
