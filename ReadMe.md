@@ -29,6 +29,8 @@ you can use the hash notation or not (set the router's mode to 'history' or 'has
     stateManager.addState('inbox')
     stateManager.addState('about')
     stateManager.addState('discussion', 'discussion-page', 'discussion/%')
+    stateManager.addState('article', 'article-page', 'article/%','article-mode')
+    stateManager.addState('blog', 'article-page', 'blog/%','blog-mode')
 ```
 
 ## usage in the gui
@@ -46,3 +48,10 @@ stateManager.onChange( event => {
 
 
 ```
+
+## More
+* pageChangeHandler - it's a global optional page change listener that receives ('send', 'pageview', `/${state.name}/${context || ''}`);
+* google analytics (ga) is automatically used if it was found
+* query parameters are passed to the state context under queryParams object
+* on page change, an event state:changed is fired with the new state (that include the context)
+* in addState, the last (optional) parameter can contain either a string an array of strings and it can be used for in-state special logic, or sub-states within the same parent-component, for example  

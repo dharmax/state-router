@@ -21,14 +21,14 @@ export class StateManager {
     public static dispatcher = dispatcher
     private changeAuthorities: ChangeAuthority[] = [];
 
-    constructor(private mode: RoutingMode = 'hash', autostart= true) {
+    constructor(private mode: RoutingMode = 'hash', autostart = true) {
 
         if (autostart)
             router.listen(mode)
     }
 
     start() {
-        router.listen( this.mode )
+        router.listen(this.mode)
     }
 
     onChange(handler: (event: PubSubEvent, data: any) => void): IPubSubHandle {
@@ -61,16 +61,17 @@ export class StateManager {
      * set current page state
      * @param state can be either just a state or a state and context (which can be sub-state, or anything else)
      */
-    set state(state: ApplicationStateName | [ApplicationStateName, any]) {
-        if (Array.isArray(state))
-            this.setState(state[0], state[1])
-        else
+    set state(state: ApplicationStateName | [ApplicationStateName, ...any]) {
+        if (Array.isArray(state)) {
+            const sName = state.shift()
+            this.setState(sName,state)
+        } else
             this.setState(state)
     }
 
     /** attempts to restore state from current url. Currently, works only in hash mode */
     restoreState(defaultState: ApplicationStateName) {
-        if ( router.navigate(window.location.pathname))
+        if (router.navigate(window.location.pathname))
             return
         router.navigate(defaultState)
     }
@@ -130,10 +131,9 @@ export class StateManager {
             if (await this.setState(state.name, context)) {
 
                 // @ts-ignore
-                if (window.ga) {
-                    // @ts-ignore
-                    window.ga('send', 'pageview', `/${state.name}/${context || ''}`);
-                }
+                window.pageChangeHandler && window.pageChangeHandler('send', 'pageview', `/${state.name}/${context || ''}`);
+                // @ts-ignore
+                window.ga && window.ga('send', 'pageview', `/${state.name}/${context || ''}`);
             }
         })
     }
