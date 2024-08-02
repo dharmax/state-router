@@ -41,8 +41,10 @@ export class StateManager {
      * @param state can be either just a state or a state and context (which can be sub-state, or anything else)
      */
     set state(state) {
-        if (Array.isArray(state))
-            this.setState(state[0], state[1]);
+        if (Array.isArray(state)) {
+            const sName = state.shift();
+            this.setState(sName, state);
+        }
         else
             this.setState(state);
     }
@@ -100,10 +102,9 @@ export class StateManager {
         router.add(state.route, async (context) => {
             if (await this.setState(state.name, context)) {
                 // @ts-ignore
-                if (window.ga) {
-                    // @ts-ignore
-                    window.ga('send', 'pageview', `/${state.name}/${context || ''}`);
-                }
+                window.pageChangeHandler && window.pageChangeHandler('send', 'pageview', `/${state.name}/${context || ''}`);
+                // @ts-ignore
+                window.ga && window.ga('send', 'pageview', `/${state.name}/${context || ''}`);
             }
         });
     }

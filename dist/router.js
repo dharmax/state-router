@@ -59,7 +59,8 @@ class Router {
             const match = path.match(route.pattern);
             if (match) {
                 match.shift(); // Remove the full match element
-                route.handler.apply({}, match);
+                const queryParams = Object.fromEntries(new URLSearchParams(window.location.search));
+                route.handler.apply({ queryParams }, match);
                 return true;
             }
         }

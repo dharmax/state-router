@@ -27,7 +27,7 @@ export declare class StateManager {
      * set current page state
      * @param state can be either just a state or a state and context (which can be sub-state, or anything else)
      */
-    set state(state: ApplicationStateName | [ApplicationStateName, any]);
+    set state(state: ApplicationStateName | [ApplicationStateName, ...any]);
     /** attempts to restore state from current url. Currently, works only in hash mode */
     restoreState(defaultState: ApplicationStateName): void;
     /**
