@@ -1,4 +1,4 @@
-class Router {
+export class Router {
     mode = 'hash';
     routes = [];
     root = '/';
@@ -60,7 +60,7 @@ class Router {
             if (match) {
                 match.shift(); // Remove the full match element
                 const queryParams = Object.fromEntries(new URLSearchParams(window.location.search));
-                route.handler.apply({ queryParams }, match);
+                route.handler.call({ queryParams }, ...match);
                 return true;
             }
         }
@@ -113,3 +113,4 @@ class Router {
     }
 }
 export const router = new Router();
+export function createRouter() { return new Router(); }

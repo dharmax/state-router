@@ -1,15 +1,19 @@
-import { router } from "./router";
-import dispatcher from "@dharmax/pubsub";
-export class StateManager {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StateManager = void 0;
+exports.createStateManager = createStateManager;
+const router_1 = require("./router");
+const pubsub_1 = require("@dharmax/pubsub");
+class StateManager {
     mode;
     allStates = {};
     appState;
     previousState;
     stateContext;
-    static dispatcher = dispatcher;
+    static dispatcher = pubsub_1.default;
     changeAuthorities = [];
     router;
-    constructor(mode = 'hash', autostart = true, routerInstance = router) {
+    constructor(mode = 'hash', autostart = true, routerInstance = router_1.router) {
         this.mode = mode;
         this.router = routerInstance;
         if (autostart)
@@ -75,7 +79,7 @@ export class StateManager {
         this.previousState = this.appState;
         this.stateContext = context;
         this.appState = newState;
-        dispatcher.trigger('state-manager', 'state', 'changed', this.appState);
+        pubsub_1.default.trigger('state-manager', 'state', 'changed', this.appState);
         return true;
     }
     /**
@@ -111,6 +115,7 @@ export class StateManager {
         });
     }
 }
-export function createStateManager(mode = 'hash', autostart = true, routerInstance = router) {
+exports.StateManager = StateManager;
+function createStateManager(mode = 'hash', autostart = true, routerInstance = router_1.router) {
     return new StateManager(mode, autostart, routerInstance);
 }

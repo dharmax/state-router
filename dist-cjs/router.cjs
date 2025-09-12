@@ -1,98 +1,83 @@
-type RouteHandler = (...args: string[]) => void;
-
-interface Route {
-    pattern: RegExp | null;
-    handler: RouteHandler;
-}
-
-export type RoutingMode = 'history' | 'hash';
-
-export class Router {
-    private mode: RoutingMode = 'hash';
-    private routes: Route[] = [];
-    private root: string = '/';
-    private baseLocation: string | null = null;
-    public staticFilters: ((url: string) => boolean)[] = []
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.router = exports.Router = void 0;
+exports.createRouter = createRouter;
+class Router {
+    mode = 'hash';
+    routes = [];
+    root = '/';
+    baseLocation = null;
+    staticFilters = [];
     constructor() {
         this.staticFilters.push(url => {
             const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp', '.md', '.ejs', '.jsm', '.txt'];
             return staticFileExtensions.some(ext => url.endsWith(ext));
-
-        })
+        });
     }
-
-    private cleanPathString(path: string): string {
+    cleanPathString(path) {
         path = path.replace(/\/$/, '').replace(/^\//, '');
         return path = path.replace(/#{2,}/g, '#');
     }
-
-    private clearQuery(url: string): string {
+    clearQuery(url) {
         const [path, query] = url.split('?');
-        if (!query) return path;
+        if (!query)
+            return path;
         const [_, hash] = query.split('#');
         return hash ? `${path}#${hash}` : path;
     }
-
-    private isStaticFile(url: string): boolean {
-        return (this.staticFilters || []).some(filter => filter(url))
+    isStaticFile(url) {
+        return (this.staticFilters || []).some(filter => filter(url));
     }
-
-    public resetRoot(root: string): void {
+    resetRoot(root) {
         this.root = '/' + this.cleanPathString(root) + '/';
     }
-
-    public getLocation(): string {
+    getLocation() {
         if (this.mode === 'history') {
             let fragment = this.cleanPathString(decodeURI(window.location.pathname + window.location.search));
             fragment = this.clearQuery(fragment);
             return this.root !== '/' ? fragment.replace(this.root, '') : fragment;
-        } else {
+        }
+        else {
             const match = window.location.href.match(/#(.*)$/);
             return match ? this.clearQuery(match[1]) : '';
         }
     }
-
-    public add(pattern: RegExp | RouteHandler, handler?: RouteHandler): Router {
+    add(pattern, handler) {
         if (typeof pattern === 'function') {
             handler = pattern;
             pattern = /^.*$/; // Match any path
         }
-        this.routes.push({pattern, handler: handler as RouteHandler});
+        this.routes.push({ pattern, handler: handler });
         return this;
     }
-
     /**
      *
      * @param location
      * @return true if it was intercepted or false if not handled
      */
-    public handleChange(location?: string): boolean {
+    handleChange(location) {
         const path = location || this.getLocation();
         if (this.isStaticFile(path))
             return false; // Bypass routing for static files
-
         for (const route of this.routes) {
             const match = path.match(route.pattern);
             if (match) {
                 match.shift(); // Remove the full match element
                 const queryParams = Object.fromEntries(new URLSearchParams(window.location.search));
-                route.handler.call({queryParams}, ...match);
-                return true
+                route.handler.call({ queryParams }, ...match);
+                return true;
             }
         }
-
         console.warn(`No routing found for ${path}`);
-        return false
+        return false;
     }
-
-    listen(mode: RoutingMode = 'hash'): void {
-        const self = this
-        this.mode = mode
+    listen(mode = 'hash') {
+        const self = this;
+        this.mode = mode;
         switch (mode) {
             case "hash":
-                window.addEventListener('hashchange', () => handler())
-                break
+                window.addEventListener('hashchange', () => handler());
+                break;
             case "history":
                 window.addEventListener('popstate', event => handler(event.state?.path));
                 document.addEventListener('click', handleInternalNavigation);
@@ -102,41 +87,35 @@ export class Router {
                         handleInternalNavigation(event);
                 });
         }
-
-        function handleInternalNavigation(event: any) {
-            const node = event.target
-            const href = node.getAttribute('href')
+        function handleInternalNavigation(event) {
+            const node = event.target;
+            const href = node.getAttribute('href');
             if (href) {
                 event.preventDefault();
-                history.pushState({path: href}, '', href);
+                history.pushState({ path: href }, '', href);
                 handler(href);
             }
         }
-
-        function handler(path?: string) {
-            path = path || location.href.split('#')[0]
-
+        function handler(path) {
+            path = path || location.href.split('#')[0];
             if (self.isStaticFile(path))
-                return
+                return;
             const currentLocation = self.getLocation();
             if (self.baseLocation !== currentLocation) {
                 self.baseLocation = currentLocation;
                 self.handleChange(currentLocation);
             }
         }
-
-        handler()
+        handler();
     }
-
-
-    navigate(path: string = ''): boolean {
+    navigate(path = '') {
         if (this.mode === 'history')
             history.pushState(null, null, this.root + this.cleanPathString(path));
         else
             window.location.hash = this.cleanPathString(path);
-        return this.handleChange()
+        return this.handleChange();
     }
 }
-
-export const router = new Router();
-export function createRouter(): Router { return new Router() }
+exports.Router = Router;
+exports.router = new Router();
+function createRouter() { return new Router(); }

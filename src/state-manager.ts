@@ -1,4 +1,4 @@
-import {router, RoutingMode} from "./router";
+import {router, RoutingMode, Router as RouterType} from "./router";
 import dispatcher, {IPubSubHandle, PubSubEvent} from "@dharmax/pubsub";
 
 export type ApplicationStateName = string
@@ -21,14 +21,16 @@ export class StateManager {
     public static dispatcher = dispatcher
     private changeAuthorities: ChangeAuthority[] = [];
 
-    constructor(private mode: RoutingMode = 'hash', autostart = true) {
+    private router: RouterType
 
+    constructor(private mode: RoutingMode = 'hash', autostart = true, routerInstance: RouterType = router) {
+        this.router = routerInstance
         if (autostart)
-            router.listen(mode)
+            this.router.listen(mode)
     }
 
     start() {
-        router.listen(this.mode)
+        this.router.listen(this.mode)
     }
 
     onChange(handler: (event: PubSubEvent, data: any) => void): IPubSubHandle {
@@ -71,9 +73,9 @@ export class StateManager {
 
     /** attempts to restore state from current url. Currently, works only in hash mode */
     restoreState(defaultState: ApplicationStateName) {
-        if (router.navigate(window.location.pathname))
+        if (this.router.navigate(window.location.pathname))
             return
-        router.navigate(defaultState)
+        this.router.navigate(defaultState)
     }
 
     /**
@@ -127,7 +129,7 @@ export class StateManager {
 
     registerStateByState(state: ApplicationState) {
         this.allStates[state.name] = state
-        router.add(state.route, async (context: any) => {
+        this.router.add(state.route, async (context: any) => {
             if (await this.setState(state.name, context)) {
 
                 // @ts-ignore
@@ -139,3 +141,6 @@ export class StateManager {
     }
 }
 
+export function createStateManager(mode: RoutingMode = 'hash', autostart = true, routerInstance: RouterType = router): StateManager {
+    return new StateManager(mode, autostart, routerInstance)
+}
