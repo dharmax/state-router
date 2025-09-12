@@ -1,6 +1,6 @@
 {
   "name": "@dharmax/state-router",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "A cute and tight router and application state controller",
   "type": "module",
   "main": "dist-cjs/index.cjs",
