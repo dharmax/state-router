@@ -4,7 +4,7 @@ export type ApplicationStateName = string;
 export type ApplicationState = {
     name: ApplicationStateName;
     pageName: string;
-    route: RegExp;
+    route: RegExp | string;
     mode?: string | string[];
 };
 export type ChangeAuthority = (state: ApplicationState) => Promise<boolean>;
@@ -17,13 +17,16 @@ export declare class StateManager {
     static dispatcher: import("@dharmax/pubsub").PubSub;
     private changeAuthorities;
     private router;
+    private beforeChangeHandlers;
+    private afterChangeHandlers;
     constructor(mode?: RoutingMode, autostart?: boolean, routerInstance?: RouterType);
     start(): void;
+    stop(): void;
     onChange(handler: (event: PubSubEvent, data: any) => void): IPubSubHandle;
     registerChangeAuthority(authorityCallback: (targetState: ApplicationState) => Promise<boolean>): void;
     getState(): ApplicationState;
     get previous(): ApplicationState;
-    get context(): ApplicationState;
+    get context(): any;
     /**
      * set current page state
      * @param state can be either just a state or a state and context (which can be sub-state, or anything else)
@@ -46,5 +49,8 @@ export declare class StateManager {
      */
     addState(name: string, pageName?: string, route?: RegExp | string, mode?: string | string[]): void;
     registerStateByState(state: ApplicationState): void;
+    onBeforeChange(handler: (target: ApplicationState, context?: any) => boolean | Promise<boolean>): void;
+    onAfterChange(handler: (state: ApplicationState, context?: any, previous?: ApplicationState) => void | Promise<void>): void;
+    onNotFound(handler: (path: string) => void): void;
 }
 export declare function createStateManager(mode?: RoutingMode, autostart?: boolean, routerInstance?: RouterType): StateManager;

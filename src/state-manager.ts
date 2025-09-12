@@ -6,7 +6,7 @@ export type ApplicationStateName = string
 export type ApplicationState = {
     name: ApplicationStateName
     pageName: string
-    route: RegExp
+    route: RegExp | string
     mode?: string | string[]
 }
 

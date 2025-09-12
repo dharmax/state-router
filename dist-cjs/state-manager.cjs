@@ -13,6 +13,8 @@ class StateManager {
     static dispatcher = pubsub_1.default;
     changeAuthorities = [];
     router;
+    beforeChangeHandlers = [];
+    afterChangeHandlers = [];
     constructor(mode = 'hash', autostart = true, routerInstance = router_1.router) {
         this.mode = mode;
         this.router = routerInstance;
@@ -21,6 +23,11 @@ class StateManager {
     }
     start() {
         this.router.listen(this.mode);
+    }
+    stop() {
+        // unlisten router to cleanup event listeners
+        // @ts-ignore - older Router versions may not have unlisten
+        this.router.unlisten && this.router.unlisten();
     }
     onChange(handler) {
         return StateManager.dispatcher.on('state:changed', handler);
@@ -73,13 +80,18 @@ class StateManager {
         }
         // check if the state change was declined by any change authority and if so - don't do it and return false
         const changeConfirmations = await Promise.all(this.changeAuthorities.map(authority => authority(newState)));
-        if (changeConfirmations.includes(false))
+        const vetoes = await Promise.all(this.beforeChangeHandlers.map(h => Promise.resolve(h(newState, context))));
+        if (changeConfirmations.includes(false) || vetoes.includes(false))
             return false;
         // perform the change
         this.previousState = this.appState;
         this.stateContext = context;
         this.appState = newState;
         pubsub_1.default.trigger('state-manager', 'state', 'changed', this.appState);
+        // afterChange hooks
+        for (const cb of this.afterChangeHandlers) {
+            await cb(this.appState, context, this.previousState);
+        }
         return true;
     }
     /**
@@ -92,8 +104,9 @@ class StateManager {
     addState(name, pageName, route, mode) {
         pageName = pageName || name;
         route = route || pageName;
-        if (typeof route === "string") {
-            let newRoute = route.split('%').join('?(.*)');
+        if (typeof route === 'string' && route.includes('%')) {
+            // keep colon-based string patterns intact for Router to compile named params
+            const newRoute = route.split('%').join('?(.*)');
             route = new RegExp(`^${newRoute}$`);
         }
         this.registerStateByState({
@@ -105,14 +118,30 @@ class StateManager {
     }
     registerStateByState(state) {
         this.allStates[state.name] = state;
-        this.router.add(state.route, async (context) => {
-            if (await this.setState(state.name, context)) {
+        const self = this;
+        this.router.add(state.route, async function (...captures) {
+            // prefer named params (from router string patterns), else multi-captures array, else first capture
+            // @ts-ignore
+            const named = (this && this.params) || null;
+            const context = named && Object.keys(named).length ? named : (captures.length <= 1 ? captures[0] : captures);
+            if (await self.setState(state.name, context)) {
                 // @ts-ignore
                 window.pageChangeHandler && window.pageChangeHandler('send', 'pageview', `/${state.name}/${context || ''}`);
                 // @ts-ignore
                 window.ga && window.ga('send', 'pageview', `/${state.name}/${context || ''}`);
             }
         });
+    }
+    onBeforeChange(handler) {
+        this.beforeChangeHandlers.push(handler);
+    }
+    onAfterChange(handler) {
+        this.afterChangeHandlers.push(handler);
+    }
+    onNotFound(handler) {
+        // proxy to router-level notFound
+        // @ts-ignore - older Router versions may not have onNotFound
+        this.router.onNotFound && this.router.onNotFound(handler);
     }
 }
 exports.StateManager = StateManager;
