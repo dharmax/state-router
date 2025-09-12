@@ -1,37 +1,35 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { createStateManager } from '../src'
+import { createRouter } from '../src'
+
 describe('StateManager', () => {
     beforeEach(() => {
         window.location.hash = ''
         window.location.search = ''
+        history.pushState({}, '', '/')
     })
 
     it('transitions to a state and exposes previous + context', async () => {
-        vi.resetModules()
-        const { StateManager } = await import('../src/state-manager')
-        const { router } = await import('../src/router')
-        const sm = new StateManager('hash', false)
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
 
-        // define two states, with one capturing context
         sm.addState('home', 'home', /^home$/)
         sm.addState('users', 'users', /^users\/(\d+)$/)
 
         await sm.setState('home')
         expect(sm.getState().name).toBe('home')
 
-        // trigger via router so context flows
         const handled = router.handleChange('users/123')
         expect(handled).toBe(true)
-        // state update happens async via router handler
         await new Promise(r => setTimeout(r, 0))
         expect(sm.getState().name).toBe('users')
         expect(sm.previous?.name).toBe('home')
-        // first capture group becomes context
         expect(sm.context).toBe('123')
     })
 
     it('declines state change when any authority returns false', async () => {
-        vi.resetModules()
-        const { StateManager } = await import('../src/state-manager')
-        const sm = new StateManager('hash', false)
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
         sm.addState('A', 'A', /^A$/)
         sm.addState('B', 'B', /^B$/)
 
@@ -48,11 +46,8 @@ describe('StateManager', () => {
     })
 
     it('addState with % expands to capture regex and passes context', async () => {
-        vi.resetModules()
-        const { StateManager } = await import('../src/state-manager')
-        const { router } = await import('../src/router')
-        const sm = new StateManager('hash', false)
-        // route string with % becomes a capture group
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
         sm.addState('docs', 'docs', 'docs%')
 
         const handled = router.handleChange('docs/guide')
@@ -63,9 +58,7 @@ describe('StateManager', () => {
     })
 
     it('publishes state:changed event via onChange()', async () => {
-        vi.resetModules()
-        const { StateManager } = await import('../src/state-manager')
-        const sm = new StateManager('hash', false)
+        const sm = createStateManager('hash', false, createRouter())
         sm.addState('one', 'one', /^one$/)
 
         let seen: string | null = null
@@ -77,25 +70,40 @@ describe('StateManager', () => {
         expect(seen).toBe('one')
 
         // cleanup
-        StateManager.dispatcher.off(sub)
+        // @ts-ignore
+        ;(sm.constructor as any).dispatcher.off(sub)
     })
 
     it('restoreState navigates to default if current path not routable (hash mode)', async () => {
-        vi.resetModules()
-        const { StateManager } = await import('../src/state-manager')
-        const { router } = await import('../src/router')
-        const sm = new StateManager('hash', false)
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
         sm.addState('home', 'home', /^home$/)
 
-        // ensure no hash and no matching route
         window.location.hash = ''
         sm.restoreState('home')
 
-        // allow async change to propagate
         await new Promise(r => setTimeout(r, 0))
 
         expect(window.location.hash).toBe('#home')
         expect(sm.getState().name).toBe('home')
     })
+
+    it('multi-capture context returns array; named params return object', async () => {
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
+        sm.addState('multi', 'multi', /^(\w+)-(\w+)$/)
+        sm.addState('user', 'user', '/users/:id')
+
+        await new Promise(r => setTimeout(r, 0))
+        router.handleChange('foo-bar')
+        await new Promise(r => setTimeout(r, 0))
+        expect(sm.getState().name).toBe('multi')
+        expect(Array.isArray(sm.context)).toBe(true)
+        expect(sm.context).toEqual(['foo', 'bar'])
+
+        router.handleChange('users/555')
+        await new Promise(r => setTimeout(r, 0))
+        expect(sm.getState().name).toBe('user')
+        expect(sm.context).toEqual({ id: '555' })
+    })
 })
-import { describe, it, expect, vi, beforeEach } from 'vitest'

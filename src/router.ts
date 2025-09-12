@@ -3,6 +3,7 @@ type RouteHandler = (...args: string[]) => void;
 interface Route {
     pattern: RegExp | null;
     handler: RouteHandler;
+    paramNames?: string[];
 }
 
 export type RoutingMode = 'history' | 'hash';
@@ -13,6 +14,17 @@ export class Router {
     private root: string = '/';
     private baseLocation: string | null = null;
     public staticFilters: ((url: string) => boolean)[] = []
+
+    private isListening = false;
+    private bound: {
+        hashchange?: () => void,
+        popstate?: (e: PopStateEvent) => void,
+        click?: (e: Event) => void,
+        keydown?: (e: KeyboardEvent) => void,
+    } = {};
+
+    private notFoundHandler?: (path: string) => void;
+    private decodeParams = false;
 
     constructor() {
         this.staticFilters.push(url => {
@@ -43,6 +55,7 @@ export class Router {
     }
 
     public getLocation(): string {
+        if (!this.isBrowser()) return '';
         if (this.mode === 'history') {
             let fragment = this.cleanPathString(decodeURI(window.location.pathname + window.location.search));
             fragment = this.clearQuery(fragment);
@@ -53,13 +66,55 @@ export class Router {
         }
     }
 
-    public add(pattern: RegExp | RouteHandler, handler?: RouteHandler): Router {
+    public add(pattern: RegExp | string | RouteHandler, handler?: RouteHandler): Router {
+        let paramNames: string[] | undefined;
         if (typeof pattern === 'function') {
             handler = pattern;
             pattern = /^.*$/; // Match any path
+        } else if (typeof pattern === 'string') {
+            const compiled = this.compilePattern(pattern);
+            pattern = compiled.regex;
+            paramNames = compiled.paramNames;
         }
-        this.routes.push({pattern, handler: handler as RouteHandler});
+        this.routes.push({ pattern: pattern as RegExp, handler: handler as RouteHandler, paramNames });
         return this;
+    }
+
+    public onNotFound(handler: (path: string) => void): Router {
+        this.notFoundHandler = handler;
+        return this;
+    }
+
+    public setDecodeParams(decode: boolean): Router {
+        this.decodeParams = decode;
+        return this;
+    }
+
+    public getQueryParams(search?: string): Record<string, string> {
+        if (!this.isBrowser() && !search) return {};
+        const qs = typeof search === 'string' ? search : window.location.search || '';
+        const usp = new URLSearchParams(qs);
+        const obj: Record<string, string> = {};
+        usp.forEach((v, k) => { obj[k] = v; });
+        return obj;
+    }
+
+    private isBrowser(): boolean {
+        return typeof window !== 'undefined' && typeof document !== 'undefined';
+    }
+
+    private compilePattern(pattern: string): { regex: RegExp, paramNames: string[] } {
+        // normalize leading slash to align with cleanPathString behavior
+        const normalized = pattern.replace(/^\//, '');
+        const paramNames: string[] = [];
+        // convert /users/:id -> ^users/([^/]+)$
+        const reStr = normalized
+            .replace(/([.*+?^${}()|[\]\\])/g, '\\$1') // escape regex specials
+            .replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_m, p1) => {
+                paramNames.push(p1);
+                return '([^/]+)';
+            });
+        return { regex: new RegExp(`^${reStr}$`), paramNames };
     }
 
     /**
@@ -68,56 +123,46 @@ export class Router {
      * @return true if it was intercepted or false if not handled
      */
     public handleChange(location?: string): boolean {
-        const path = location || this.getLocation();
+        const path = (location ?? this.getLocation()) || '';
         if (this.isStaticFile(path))
             return false; // Bypass routing for static files
 
         for (const route of this.routes) {
-            const match = path.match(route.pattern);
+            const match = route.pattern ? path.match(route.pattern) : null;
             if (match) {
                 match.shift(); // Remove the full match element
-                const queryParams = Object.fromEntries(new URLSearchParams(window.location.search));
-                route.handler.call({queryParams}, ...match);
+                const queryParams = this.getQueryParams();
+                const captures = this.decodeParams ? match.map(v => safeDecode(v)) : match;
+                let params: Record<string, string> | undefined;
+                if (route.paramNames && route.paramNames.length) {
+                    params = {};
+                    route.paramNames.forEach((n, i) => params![n] = captures[i]);
+                }
+                route.handler.call({ queryParams, params }, ...captures);
                 return true
             }
         }
 
-        console.warn(`No routing found for ${path}`);
+        if (this.notFoundHandler) {
+            this.notFoundHandler(path);
+            return true;
+        }
+
+        if (path) console.warn(`No routing found for ${path}`);
         return false
     }
 
     listen(mode: RoutingMode = 'hash'): void {
+        if (!this.isBrowser()) return;
+        // avoid duplicate listeners
+        if (this.isListening) this.unlisten();
+
         const self = this
         this.mode = mode
-        switch (mode) {
-            case "hash":
-                window.addEventListener('hashchange', () => handler())
-                break
-            case "history":
-                window.addEventListener('popstate', event => handler(event.state?.path));
-                document.addEventListener('click', handleInternalNavigation);
-                document.addEventListener('keydown', event => {
-                    // @ts-ignore
-                    if (event.key === 'Enter' && event.target.tagName === 'A')
-                        handleInternalNavigation(event);
-                });
-        }
 
-        function handleInternalNavigation(event: any) {
-            const node = event.target
-            const href = node.getAttribute('href')
-            if (href) {
-                event.preventDefault();
-                history.pushState({path: href}, '', href);
-                handler(href);
-            }
-        }
-
-        function handler(path?: string) {
-            path = path || location.href.split('#')[0]
-
-            if (self.isStaticFile(path))
-                return
+        const handler = (path?: string) => {
+            const p = path || location.href.split('#')[0]
+            if (self.isStaticFile(p)) return
             const currentLocation = self.getLocation();
             if (self.baseLocation !== currentLocation) {
                 self.baseLocation = currentLocation;
@@ -125,18 +170,102 @@ export class Router {
             }
         }
 
+        const handleInternalNavigation = (event: Event) => {
+            // modified clicks or non-left clicks
+            const me = event as MouseEvent
+            if (event.type === 'click') {
+                if (me.button !== 0) return; // left-click only
+                if (me.metaKey || me.ctrlKey || me.shiftKey) return;
+            }
+
+            const target = event.target as Element | null
+            if (!target || !('closest' in target)) return
+            const anchor = (target as any).closest?.('a') as HTMLAnchorElement | null
+            if (!anchor) return
+
+            if (event.type === 'keydown') {
+                const ke = event as KeyboardEvent
+                if (ke.key !== 'Enter') return
+            }
+
+            const href = anchor.getAttribute('href') || ''
+            if (!href) return
+
+            const url = new URL(href, window.location.href)
+
+            // ignore external origins or different hostnames
+            if (url.origin !== window.location.origin) return
+
+            // ignore target=_blank, download, or rel=noreferrer
+            const t = anchor.getAttribute('target')
+            if (t && t.toLowerCase() === '_blank') return
+            if (anchor.hasAttribute('download')) return
+            const rel = anchor.getAttribute('rel')
+            if (rel && /\bnoreferrer\b/i.test(rel)) return
+
+            const pathWithQuery = url.pathname + (url.search || '')
+            if (self.isStaticFile(pathWithQuery) || self.isStaticFile(url.pathname)) return
+
+            event.preventDefault()
+            history.pushState({ path: pathWithQuery }, '', pathWithQuery)
+            handler(pathWithQuery)
+        }
+
+        switch (mode) {
+            case 'hash':
+                this.bound.hashchange = () => handler()
+                window.addEventListener('hashchange', this.bound.hashchange)
+                break
+            case 'history':
+                this.bound.popstate = (event: PopStateEvent) => handler((event.state as any)?.path)
+                this.bound.click = handleInternalNavigation
+                this.bound.keydown = (event: KeyboardEvent) => handleInternalNavigation(event)
+                window.addEventListener('popstate', this.bound.popstate)
+                document.addEventListener('click', this.bound.click)
+                document.addEventListener('keydown', this.bound.keydown)
+                break
+        }
+
+        this.isListening = true
         handler()
     }
 
+    unlisten(): void {
+        if (!this.isBrowser() || !this.isListening) return;
+        switch (this.mode) {
+            case 'hash':
+                if (this.bound.hashchange) window.removeEventListener('hashchange', this.bound.hashchange)
+                break
+            case 'history':
+                if (this.bound.popstate) window.removeEventListener('popstate', this.bound.popstate)
+                if (this.bound.click) document.removeEventListener('click', this.bound.click)
+                if (this.bound.keydown) document.removeEventListener('keydown', this.bound.keydown)
+                break
+        }
+        this.bound = {}
+        this.isListening = false
+    }
 
-    navigate(path: string = ''): boolean {
-        if (this.mode === 'history')
-            history.pushState(null, null, this.root + this.cleanPathString(path));
-        else
+
+    navigate(path: string = '', opts?: { replace?: boolean }): boolean {
+        if (!this.isBrowser()) return false;
+        if (this.mode === 'history') {
+            const url = this.root + this.cleanPathString(path)
+            if (opts?.replace) history.replaceState(null, '', url)
+            else history.pushState(null, '', url)
+        } else
             window.location.hash = this.cleanPathString(path);
         return this.handleChange()
+    }
+
+    replace(path: string = ''): boolean {
+        return this.navigate(path, { replace: true })
     }
 }
 
 export const router = new Router();
 export function createRouter(): Router { return new Router() }
+
+function safeDecode(v: string): string {
+    try { return decodeURIComponent(v) } catch { return v }
+}

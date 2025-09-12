@@ -16,12 +16,15 @@ export class StateManager {
     private allStates: { [name: string]: ApplicationState } = {}
     private appState: ApplicationState
     private previousState: ApplicationState
-    private stateContext: ApplicationState
+    private stateContext: any
 
     public static dispatcher = dispatcher
     private changeAuthorities: ChangeAuthority[] = [];
 
     private router: RouterType
+
+    private beforeChangeHandlers: Array<(target: ApplicationState, context?: any) => boolean | Promise<boolean>> = []
+    private afterChangeHandlers: Array<(state: ApplicationState, context?: any, previous?: ApplicationState) => void | Promise<void>> = []
 
     constructor(private mode: RoutingMode = 'hash', autostart = true, routerInstance: RouterType = router) {
         this.router = routerInstance
@@ -31,6 +34,12 @@ export class StateManager {
 
     start() {
         this.router.listen(this.mode)
+    }
+
+    stop() {
+        // unlisten router to cleanup event listeners
+        // @ts-ignore - older Router versions may not have unlisten
+        this.router.unlisten && (this.router as any).unlisten()
     }
 
     onChange(handler: (event: PubSubEvent, data: any) => void): IPubSubHandle {
@@ -55,7 +64,7 @@ export class StateManager {
         return this.previousState
     }
 
-    get context() {
+    get context(): any {
         return this.stateContext
     }
 
@@ -93,7 +102,8 @@ export class StateManager {
 
         // check if the state change was declined by any change authority and if so - don't do it and return false
         const changeConfirmations = await Promise.all(this.changeAuthorities.map(authority => authority(newState)))
-        if (changeConfirmations.includes(false))
+        const vetoes = await Promise.all(this.beforeChangeHandlers.map(h => Promise.resolve(h(newState, context))))
+        if (changeConfirmations.includes(false) || vetoes.includes(false))
             return false
 
         // perform the change
@@ -101,6 +111,10 @@ export class StateManager {
         this.stateContext = context
         this.appState = newState
         dispatcher.trigger('state-manager', 'state', 'changed', this.appState)
+        // afterChange hooks
+        for (const cb of this.afterChangeHandlers) {
+            await cb(this.appState, context, this.previousState)
+        }
         return true
     }
 
@@ -115,8 +129,9 @@ export class StateManager {
 
         pageName = pageName || name
         route = route || pageName
-        if (typeof route === "string") {
-            let newRoute = route.split('%').join('?(.*)')
+        if (typeof route === 'string' && route.includes('%')) {
+            // keep colon-based string patterns intact for Router to compile named params
+            const newRoute = route.split('%').join('?(.*)')
             route = new RegExp(`^${newRoute}$`)
         }
         this.registerStateByState({
@@ -129,15 +144,33 @@ export class StateManager {
 
     registerStateByState(state: ApplicationState) {
         this.allStates[state.name] = state
-        this.router.add(state.route, async (context: any) => {
-            if (await this.setState(state.name, context)) {
-
+        const self = this
+        this.router.add(state.route, async function(...captures: any[]) {
+            // prefer named params (from router string patterns), else multi-captures array, else first capture
+            // @ts-ignore
+            const named = (this && (this as any).params) || null
+            const context = named && Object.keys(named).length ? named : (captures.length <= 1 ? captures[0] : captures)
+            if (await self.setState(state.name, context)) {
                 // @ts-ignore
                 window.pageChangeHandler && window.pageChangeHandler('send', 'pageview', `/${state.name}/${context || ''}`);
                 // @ts-ignore
                 window.ga && window.ga('send', 'pageview', `/${state.name}/${context || ''}`);
             }
         })
+    }
+
+    onBeforeChange(handler: (target: ApplicationState, context?: any) => boolean | Promise<boolean>) {
+        this.beforeChangeHandlers.push(handler)
+    }
+
+    onAfterChange(handler: (state: ApplicationState, context?: any, previous?: ApplicationState) => void | Promise<void>) {
+        this.afterChangeHandlers.push(handler)
+    }
+
+    onNotFound(handler: (path: string) => void) {
+        // proxy to router-level notFound
+        // @ts-ignore - older Router versions may not have onNotFound
+        this.router.onNotFound && (this.router as any).onNotFound(handler)
     }
 }
 
