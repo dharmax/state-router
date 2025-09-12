@@ -12,6 +12,7 @@ export class Router {
     private mode: RoutingMode = 'hash';
     private routes: Route[] = [];
     private root: string = '/';
+    private rootCompare: string = '';
     private baseLocation: string | null = null;
     public staticFilters: ((url: string) => boolean)[] = []
 
@@ -51,15 +52,23 @@ export class Router {
     }
 
     public resetRoot(root: string): void {
-        this.root = '/' + this.cleanPathString(root) + '/';
+        const cleaned = this.cleanPathString(root)
+        this.root = '/' + cleaned + '/';
+        this.rootCompare = cleaned ? cleaned + '/' : ''
     }
 
     public getLocation(): string {
         if (!this.isBrowser()) return '';
         if (this.mode === 'history') {
-            let fragment = this.cleanPathString(decodeURI(window.location.pathname + window.location.search));
+            let fragment = decodeURI(window.location.pathname + window.location.search);
             fragment = this.clearQuery(fragment);
-            return this.root !== '/' ? fragment.replace(this.root, '') : fragment;
+            // strip leading slash for comparison convenience
+            fragment = fragment.replace(/^\//, '');
+            if (this.root !== '/' && this.rootCompare && fragment.startsWith(this.rootCompare)) {
+                fragment = fragment.slice(this.rootCompare.length);
+            }
+            fragment = this.cleanPathString(fragment);
+            return fragment;
         } else {
             const match = window.location.href.match(/#(.*)$/);
             return match ? this.clearQuery(match[1]) : '';

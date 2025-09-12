@@ -9,7 +9,7 @@ Router
 - added: optional decoding of params via `router.setDecodeParams(true|false)`.
 - improved: SSR‑safety by lazy access to `window`/`document` and no‑ops outside the browser.
 - docs: `router.resetRoot()` documented explicitly.
-- note: `router.replace()` intentionally not added (see request).
+- added: `router.navigate(path, { replace })` and `router.replace(path)` so replace must be explicitly requested; default remains push.
 
 StateManager
 - fixed: typing — internal `stateContext` and `context` getter are `any`.

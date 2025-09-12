@@ -88,6 +88,37 @@ describe('StateManager', () => {
         expect(sm.getState().name).toBe('home')
     })
 
+    it('onBeforeChange can veto and onAfterChange fires on success', async () => {
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
+        sm.addState('one', 'one', /^one$/)
+        sm.addState('two', 'two', /^two$/)
+
+        let afterCalls: string[] = []
+        sm.onAfterChange((s, ctx, prev) => { afterCalls.push(s.name) })
+        sm.onBeforeChange((target) => target.name !== 'two')
+
+        let ok = await sm.setState('one')
+        expect(ok).toBe(true)
+        expect(sm.getState().name).toBe('one')
+        expect(afterCalls).toEqual(['one'])
+
+        ok = await sm.setState('two')
+        expect(ok).toBe(false)
+        expect(sm.getState().name).toBe('one')
+        expect(afterCalls).toEqual(['one'])
+    })
+
+    it('onNotFound via StateManager proxies to router', async () => {
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
+        let seen: string | null = null
+        sm.onNotFound((p) => { seen = p })
+        const handled = router.handleChange('missing-route')
+        expect(handled).toBe(true)
+        expect(seen).toBe('missing-route')
+    })
+
     it('multi-capture context returns array; named params return object', async () => {
         const router = createRouter()
         const sm = createStateManager('hash', false, router)

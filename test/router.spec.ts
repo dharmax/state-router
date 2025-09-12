@@ -114,6 +114,118 @@ describe('Router', () => {
         router.unlisten()
     })
 
+    it('ignores modified clicks: ctrl/meta/shift (history mode)', async () => {
+        const router = createRouter()
+        let called = 0
+        router.add(/^x$/, function () { called++ })
+        document.body.innerHTML = '<a id="lnk" href="/x">X</a>'
+        const a = document.getElementById('lnk') as HTMLAnchorElement
+        router.listen('history')
+
+        const spy = vi.spyOn(history, 'pushState')
+
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }))
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true, button: 0 }))
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, shiftKey: true, button: 0 }))
+
+        await new Promise(r => setTimeout(r, 0))
+        expect(called).toBe(0)
+        expect(spy).not.toHaveBeenCalled()
+        router.unlisten()
+    })
+
+    it('ignores right/middle clicks (history mode)', async () => {
+        const router = createRouter()
+        let called = 0
+        router.add(/^x$/, function () { called++ })
+        document.body.innerHTML = '<a id="lnk" href="/x">X</a>'
+        const a = document.getElementById('lnk') as HTMLAnchorElement
+        router.listen('history')
+
+        const spy = vi.spyOn(history, 'pushState')
+
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 1 }))
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 2 }))
+
+        await new Promise(r => setTimeout(r, 0))
+        expect(called).toBe(0)
+        expect(spy).not.toHaveBeenCalled()
+        router.unlisten()
+    })
+
+    it('ignores target=_blank, download, rel=noreferrer (history mode)', async () => {
+        const router = createRouter()
+        let called = 0
+        router.add(/^x$/, function () { called++ })
+        document.body.innerHTML = [
+            '<a id="b" href="/x" target="_blank">X</a>',
+            '<a id="d" href="/x" download>Xd</a>',
+            '<a id="n" href="/x" rel="noreferrer">Xn</a>'
+        ].join('')
+        const b = document.getElementById('b') as HTMLAnchorElement
+        const d = document.getElementById('d') as HTMLAnchorElement
+        const n = document.getElementById('n') as HTMLAnchorElement
+        router.listen('history')
+
+        const spy = vi.spyOn(history, 'pushState')
+
+        b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        d.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        n.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+        await new Promise(r => setTimeout(r, 0))
+        expect(called).toBe(0)
+        expect(spy).not.toHaveBeenCalled()
+        router.unlisten()
+    })
+
+    it('ignores external origins (history mode)', async () => {
+        const router = createRouter()
+        let called = 0
+        router.add(/^x$/, function () { called++ })
+        document.body.innerHTML = '<a id="ext" href="https://example.com/x">ext</a>'
+        const a = document.getElementById('ext') as HTMLAnchorElement
+        router.listen('history')
+        const spy = vi.spyOn(history, 'pushState')
+
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        await new Promise(r => setTimeout(r, 0))
+        expect(called).toBe(0)
+        expect(spy).not.toHaveBeenCalled()
+        router.unlisten()
+    })
+
+    it('resetRoot trims base segment (history mode)', async () => {
+        const router = createRouter()
+        let hit = false
+        router.resetRoot('app')
+        router.add(/^profile$/, function () { hit = true })
+        document.body.innerHTML = '<a id="p" href="/app/profile">P</a>'
+        const a = document.getElementById('p') as HTMLAnchorElement
+        router.listen('history')
+        a.click()
+        await new Promise(r => setTimeout(r, 0))
+        expect(hit).toBe(true)
+        expect(window.location.pathname).toBe('/app/profile')
+        expect(router.getLocation()).toBe('profile')
+        router.unlisten()
+    })
+
+    it('skips interception for static-like href (by extension)', async () => {
+        const router = createRouter()
+        let called = 0
+        router.add(/^x$/, function () { called++ })
+        document.body.innerHTML = '<a id="s" href="/file.css">S</a>'
+        const a = document.getElementById('s') as HTMLAnchorElement
+        router.listen('history')
+        const spy = vi.spyOn(history, 'pushState')
+        a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        await new Promise(r => setTimeout(r, 0))
+        expect(called).toBe(0)
+        expect(spy).not.toHaveBeenCalled()
+        router.unlisten()
+    })
+
     it('unlisten removes event listeners (history mode)', async () => {
         const router = createRouter()
         let count = 0
