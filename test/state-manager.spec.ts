@@ -5,7 +5,7 @@ import { createRouter } from '../src'
 describe('StateManager', () => {
     beforeEach(() => {
         window.location.hash = ''
-        window.location.search = ''
+        // window.location.search = '' // This causes "Not implemented: navigation" in jsdom
         history.pushState({}, '', '/')
     })
 

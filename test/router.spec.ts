@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createRouter } from '../src'
 
 describe('Router', () => {
     beforeEach(() => {
         // reset URL parts safely for jsdom
         window.location.hash = ''
-        window.location.search = ''
+        // window.location.search = '' // This causes "Not implemented: navigation" in jsdom
         history.pushState({}, '', '/')
         document.body.innerHTML = ''
     })

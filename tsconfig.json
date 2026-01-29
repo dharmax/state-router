@@ -9,7 +9,7 @@
     "moduleResolution": "Node",
     "declaration": true,
     "outDir": "./dist",
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "strict": true
   },
   "include": [
