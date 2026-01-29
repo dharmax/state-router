@@ -1,56 +1,59 @@
 export class Router {
-    mode = 'hash';
-    routes = [];
-    root = '/';
-    rootCompare = '';
-    baseLocation = null;
+    #mode = 'hash';
+    #routes = [];
+    #root = '/';
+    #rootCompare = '';
+    #baseLocation = null;
     staticFilters = [];
-    isListening = false;
-    bound = {};
-    notFoundHandler;
-    decodeParams = false;
+    #isListening = false;
+    #bound = {};
+    #notFoundHandler;
+    #decodeParams = false;
     constructor() {
         this.staticFilters.push(url => {
             const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp', '.md', '.ejs', '.jsm', '.txt'];
             return staticFileExtensions.some(ext => url.endsWith(ext));
         });
     }
-    cleanPathString(path) {
+    #cleanPathString(path) {
         path = path.replace(/\/$/, '').replace(/^\//, '');
         return path = path.replace(/#{2,}/g, '#');
     }
-    clearQuery(url) {
+    #clearQuery(url) {
         const [path, query] = url.split('?');
         if (!query)
             return path;
         const [_, hash] = query.split('#');
         return hash ? `${path}#${hash}` : path;
     }
-    isStaticFile(url) {
-        return (this.staticFilters || []).some(filter => filter(url));
+    #isStaticFile(url) {
+        return this.staticFilters.some(filter => filter(url));
     }
     resetRoot(root) {
-        const cleaned = this.cleanPathString(root);
-        this.root = '/' + cleaned + '/';
-        this.rootCompare = cleaned ? cleaned + '/' : '';
+        const cleaned = this.#cleanPathString(root);
+        this.#root = '/' + cleaned + '/';
+        this.#rootCompare = cleaned ? cleaned + '/' : '';
+    }
+    setMode(mode) {
+        this.#mode = mode;
     }
     getLocation() {
-        if (!this.isBrowser())
+        if (!this.#isBrowser())
             return '';
-        if (this.mode === 'history') {
+        if (this.#mode === 'history') {
             let fragment = decodeURI(window.location.pathname + window.location.search);
-            fragment = this.clearQuery(fragment);
+            fragment = this.#clearQuery(fragment);
             // strip leading slash for comparison convenience
             fragment = fragment.replace(/^\//, '');
-            if (this.root !== '/' && this.rootCompare && fragment.startsWith(this.rootCompare)) {
-                fragment = fragment.slice(this.rootCompare.length);
+            if (this.#root !== '/' && this.#rootCompare && fragment.startsWith(this.#rootCompare)) {
+                fragment = fragment.slice(this.#rootCompare.length);
             }
-            fragment = this.cleanPathString(fragment);
+            fragment = this.#cleanPathString(fragment);
             return fragment;
         }
         else {
             const match = window.location.href.match(/#(.*)$/);
-            return match ? this.clearQuery(match[1]) : '';
+            return match ? this.#clearQuery(match[1]) : '';
         }
     }
     add(pattern, handler) {
@@ -60,23 +63,23 @@ export class Router {
             pattern = /^.*$/; // Match any path
         }
         else if (typeof pattern === 'string') {
-            const compiled = this.compilePattern(pattern);
+            const compiled = this.#compilePattern(pattern);
             pattern = compiled.regex;
             paramNames = compiled.paramNames;
         }
-        this.routes.push({ pattern: pattern, handler: handler, paramNames });
+        this.#routes.push({ pattern: pattern, handler: handler, paramNames });
         return this;
     }
     onNotFound(handler) {
-        this.notFoundHandler = handler;
+        this.#notFoundHandler = handler;
         return this;
     }
     setDecodeParams(decode) {
-        this.decodeParams = decode;
+        this.#decodeParams = decode;
         return this;
     }
     getQueryParams(search) {
-        if (!this.isBrowser() && !search)
+        if (!this.#isBrowser() && !search)
             return {};
         const qs = typeof search === 'string' ? search : window.location.search || '';
         const usp = new URLSearchParams(qs);
@@ -84,10 +87,10 @@ export class Router {
         usp.forEach((v, k) => { obj[k] = v; });
         return obj;
     }
-    isBrowser() {
+    #isBrowser() {
         return typeof window !== 'undefined' && typeof document !== 'undefined';
     }
-    compilePattern(pattern) {
+    #compilePattern(pattern) {
         // normalize leading slash to align with cleanPathString behavior
         const normalized = pattern.replace(/^\//, '');
         const paramNames = [];
@@ -107,14 +110,14 @@ export class Router {
      */
     handleChange(location) {
         const path = (location ?? this.getLocation()) || '';
-        if (this.isStaticFile(path))
+        if (this.#isStaticFile(path))
             return false; // Bypass routing for static files
-        for (const route of this.routes) {
+        for (const route of this.#routes) {
             const match = route.pattern ? path.match(route.pattern) : null;
             if (match) {
                 match.shift(); // Remove the full match element
                 const queryParams = this.getQueryParams();
-                const captures = this.decodeParams ? match.map(v => safeDecode(v)) : match;
+                const captures = this.#decodeParams ? match.map(v => safeDecode(v)) : match;
                 let params;
                 if (route.paramNames && route.paramNames.length) {
                     params = {};
@@ -124,8 +127,8 @@ export class Router {
                 return true;
             }
         }
-        if (this.notFoundHandler) {
-            this.notFoundHandler(path);
+        if (this.#notFoundHandler) {
+            this.#notFoundHandler(path);
             return true;
         }
         if (path)
@@ -133,20 +136,20 @@ export class Router {
         return false;
     }
     listen(mode = 'hash') {
-        if (!this.isBrowser())
+        if (!this.#isBrowser())
             return;
         // avoid duplicate listeners
-        if (this.isListening)
+        if (this.#isListening)
             this.unlisten();
         const self = this;
-        this.mode = mode;
+        this.#mode = mode;
         const handler = (path) => {
             const p = path || location.href.split('#')[0];
-            if (self.isStaticFile(p))
+            if (self.#isStaticFile(p))
                 return;
             const currentLocation = self.getLocation();
-            if (self.baseLocation !== currentLocation) {
-                self.baseLocation = currentLocation;
+            if (self.#baseLocation !== currentLocation) {
+                self.#baseLocation = currentLocation;
                 self.handleChange(currentLocation);
             }
         };
@@ -160,9 +163,9 @@ export class Router {
                     return;
             }
             const target = event.target;
-            if (!target || !('closest' in target))
+            if (!target)
                 return;
-            const anchor = target.closest?.('a');
+            const anchor = target.closest('a');
             if (!anchor)
                 return;
             if (event.type === 'keydown') {
@@ -187,7 +190,7 @@ export class Router {
             if (rel && /\bnoreferrer\b/i.test(rel))
                 return;
             const pathWithQuery = url.pathname + (url.search || '');
-            if (self.isStaticFile(pathWithQuery) || self.isStaticFile(url.pathname))
+            if (self.#isStaticFile(pathWithQuery) || self.#isStaticFile(url.pathname))
                 return;
             event.preventDefault();
             history.pushState({ path: pathWithQuery }, '', pathWithQuery);
@@ -195,53 +198,53 @@ export class Router {
         };
         switch (mode) {
             case 'hash':
-                this.bound.hashchange = () => handler();
-                window.addEventListener('hashchange', this.bound.hashchange);
+                this.#bound.hashchange = () => handler();
+                window.addEventListener('hashchange', this.#bound.hashchange);
                 break;
             case 'history':
-                this.bound.popstate = (event) => handler(event.state?.path);
-                this.bound.click = handleInternalNavigation;
-                this.bound.keydown = (event) => handleInternalNavigation(event);
-                window.addEventListener('popstate', this.bound.popstate);
-                document.addEventListener('click', this.bound.click);
-                document.addEventListener('keydown', this.bound.keydown);
+                this.#bound.popstate = (event) => handler(this.getLocation());
+                this.#bound.click = handleInternalNavigation;
+                this.#bound.keydown = (event) => handleInternalNavigation(event);
+                window.addEventListener('popstate', this.#bound.popstate);
+                document.addEventListener('click', this.#bound.click);
+                document.addEventListener('keydown', this.#bound.keydown);
                 break;
         }
-        this.isListening = true;
+        this.#isListening = true;
         handler();
     }
     unlisten() {
-        if (!this.isBrowser() || !this.isListening)
+        if (!this.#isBrowser() || !this.#isListening)
             return;
-        switch (this.mode) {
+        switch (this.#mode) {
             case 'hash':
-                if (this.bound.hashchange)
-                    window.removeEventListener('hashchange', this.bound.hashchange);
+                if (this.#bound.hashchange)
+                    window.removeEventListener('hashchange', this.#bound.hashchange);
                 break;
             case 'history':
-                if (this.bound.popstate)
-                    window.removeEventListener('popstate', this.bound.popstate);
-                if (this.bound.click)
-                    document.removeEventListener('click', this.bound.click);
-                if (this.bound.keydown)
-                    document.removeEventListener('keydown', this.bound.keydown);
+                if (this.#bound.popstate)
+                    window.removeEventListener('popstate', this.#bound.popstate);
+                if (this.#bound.click)
+                    document.removeEventListener('click', this.#bound.click);
+                if (this.#bound.keydown)
+                    document.removeEventListener('keydown', this.#bound.keydown);
                 break;
         }
-        this.bound = {};
-        this.isListening = false;
+        this.#bound = {};
+        this.#isListening = false;
     }
     navigate(path = '', opts) {
-        if (!this.isBrowser())
+        if (!this.#isBrowser())
             return false;
-        if (this.mode === 'history') {
-            const url = this.root + this.cleanPathString(path);
+        if (this.#mode === 'history') {
+            const url = this.#root + this.#cleanPathString(path);
             if (opts?.replace)
                 history.replaceState(null, '', url);
             else
                 history.pushState(null, '', url);
         }
         else
-            window.location.hash = this.cleanPathString(path);
+            window.location.hash = this.#cleanPathString(path);
         return this.handleChange();
     }
     replace(path = '') {

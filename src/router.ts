@@ -30,7 +30,7 @@ export class Router {
     constructor() {
         this.staticFilters.push(url => {
             const staticFileExtensions = ['.json', '.css', '.js', '.png', '.jpg', '.svg', '.webp', '.md', '.ejs', '.jsm', '.txt'];
-            return !staticFileExtensions.some(ext => url.endsWith(ext));
+            return staticFileExtensions.some(ext => url.endsWith(ext));
         });
     }
 
@@ -47,7 +47,7 @@ export class Router {
     }
 
     #isStaticFile(url: string): boolean {
-        return !this.staticFilters.every(filter => filter(url))
+        return this.staticFilters.some(filter => filter(url))
     }
 
     public resetRoot(root: string): void {

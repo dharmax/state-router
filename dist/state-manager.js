@@ -2,28 +2,30 @@ import { router } from "./router";
 import dispatcher from "@dharmax/pubsub";
 export class StateManager {
     mode;
-    allStates = {};
-    appState;
-    previousState;
-    stateContext;
+    #allStates = {};
+    #appState = null;
+    #previousState = null;
+    #stateContext;
+    #currentTransitionId = 0;
     static dispatcher = dispatcher;
-    changeAuthorities = [];
-    router;
-    beforeChangeHandlers = [];
-    afterChangeHandlers = [];
+    #changeAuthorities = [];
+    #router;
+    #beforeChangeHandlers = [];
+    #afterChangeHandlers = [];
     constructor(mode = 'hash', autostart = true, routerInstance = router) {
         this.mode = mode;
-        this.router = routerInstance;
+        this.#router = routerInstance;
+        this.#router.setMode(mode);
         if (autostart)
-            this.router.listen(mode);
+            this.#router.listen(mode);
     }
     start() {
-        this.router.listen(this.mode);
+        this.#router.listen(this.mode);
     }
     stop() {
         // unlisten router to cleanup event listeners
         // @ts-ignore - older Router versions may not have unlisten
-        this.router.unlisten && this.router.unlisten();
+        this.#router.unlisten && this.#router.unlisten();
     }
     onChange(handler) {
         return StateManager.dispatcher.on('state:changed', handler);
@@ -34,16 +36,16 @@ export class StateManager {
     requested doesn't happen.
     **/
     registerChangeAuthority(authorityCallback) {
-        this.changeAuthorities.push(authorityCallback);
+        this.#changeAuthorities.push(authorityCallback);
     }
     getState() {
-        return this.appState || {};
+        return this.#appState || {};
     }
     get previous() {
-        return this.previousState;
+        return this.#previousState;
     }
     get context() {
-        return this.stateContext;
+        return this.#stateContext;
     }
     /**
      * set current page state
@@ -52,16 +54,21 @@ export class StateManager {
     set state(state) {
         if (Array.isArray(state)) {
             const sName = state.shift();
-            this.setState(sName, state);
+            this.setState(sName, state.length === 1 ? state[0] : state);
         }
         else
             this.setState(state);
     }
-    /** attempts to restore state from current url. Currently, works only in hash mode */
+    /** attempts to restore state from current url. */
     restoreState(defaultState) {
-        if (this.router.navigate(window.location.pathname))
+        if (this.#router.handleChange())
             return;
-        this.router.navigate(defaultState);
+        const state = this.#allStates[defaultState];
+        let path = defaultState;
+        if (state && typeof state.route === 'string') {
+            path = state.route;
+        }
+        this.#router.navigate(path);
     }
     /**
      *
@@ -69,24 +76,33 @@ export class StateManager {
      * @param context extra context (e.g. sub-state)
      */
     async setState(stateName, context) {
-        const newState = this.allStates[stateName];
+        const transitionId = ++this.#currentTransitionId;
+        const newState = this.#allStates[stateName];
         if (!newState) {
-            alert(`Undefined app state ${stateName}`);
-            return false;
+            throw new Error(`Undefined app state ${stateName}`);
         }
         // check if the state change was declined by any change authority and if so - don't do it and return false
-        const changeConfirmations = await Promise.all(this.changeAuthorities.map(authority => authority(newState)));
-        const vetoes = await Promise.all(this.beforeChangeHandlers.map(h => Promise.resolve(h(newState, context))));
+        const changeConfirmations = await Promise.all(this.#changeAuthorities.map(authority => authority(newState)));
+        if (transitionId !== this.#currentTransitionId)
+            return false;
+        const vetoes = await Promise.all(this.#beforeChangeHandlers.map(h => Promise.resolve(h(newState, context))));
+        if (transitionId !== this.#currentTransitionId)
+            return false;
         if (changeConfirmations.includes(false) || vetoes.includes(false))
             return false;
+        if (this.#appState && this.#appState.onExit) {
+            await this.#appState.onExit(this.#stateContext);
+            if (transitionId !== this.#currentTransitionId)
+                return false;
+        }
         // perform the change
-        this.previousState = this.appState;
-        this.stateContext = context;
-        this.appState = newState;
-        dispatcher.trigger('state-manager', 'state', 'changed', this.appState);
+        this.#previousState = this.#appState;
+        this.#stateContext = context;
+        this.#appState = newState;
+        dispatcher.trigger('state-manager', 'state', 'changed', this.#appState);
         // afterChange hooks
-        for (const cb of this.afterChangeHandlers) {
-            await cb(this.appState, context, this.previousState);
+        for (const cb of this.#afterChangeHandlers) {
+            await cb(this.#appState, context, this.#previousState);
         }
         return true;
     }
@@ -113,9 +129,9 @@ export class StateManager {
         });
     }
     registerStateByState(state) {
-        this.allStates[state.name] = state;
+        this.#allStates[state.name] = state;
         const self = this;
-        this.router.add(state.route, async function (...captures) {
+        this.#router.add(state.route, async function (...captures) {
             // prefer named params (from router string patterns), else multi-captures array, else first capture
             // @ts-ignore
             const named = (this && this.params) || null;
@@ -129,15 +145,21 @@ export class StateManager {
         });
     }
     onBeforeChange(handler) {
-        this.beforeChangeHandlers.push(handler);
+        this.#beforeChangeHandlers.push(handler);
     }
     onAfterChange(handler) {
-        this.afterChangeHandlers.push(handler);
+        this.#afterChangeHandlers.push(handler);
+    }
+    onExit(stateName, handler) {
+        const state = this.#allStates[stateName];
+        if (state) {
+            state.onExit = handler;
+        }
     }
     onNotFound(handler) {
         // proxy to router-level notFound
         // @ts-ignore - older Router versions may not have onNotFound
-        this.router.onNotFound && this.router.onNotFound(handler);
+        this.#router.onNotFound && this.#router.onNotFound(handler);
     }
 }
 export function createStateManager(mode = 'hash', autostart = true, routerInstance = router) {

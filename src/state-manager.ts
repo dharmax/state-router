@@ -78,7 +78,7 @@ export class StateManager {
     set state(state: ApplicationStateName | [ApplicationStateName, ...any]) {
         if (Array.isArray(state)) {
             const sName = state.shift()
-            this.setState(sName,state)
+            this.setState(sName, state.length === 1 ? state[0] : state)
         } else
             this.setState(state)
     }

@@ -124,9 +124,15 @@ describe('Router', () => {
 
         const spy = vi.spyOn(history, 'pushState')
 
+        // Prevent jsdom navigation error
+        const preventNav = (e: Event) => e.preventDefault();
+        window.addEventListener('click', preventNav);
+
         a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }))
         a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true, button: 0 }))
         a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, shiftKey: true, button: 0 }))
+
+        window.removeEventListener('click', preventNav);
 
         await new Promise(r => setTimeout(r, 0))
         expect(called).toBe(0)
@@ -144,8 +150,14 @@ describe('Router', () => {
 
         const spy = vi.spyOn(history, 'pushState')
 
+        // Prevent jsdom navigation error
+        const preventNav = (e: Event) => e.preventDefault();
+        window.addEventListener('click', preventNav);
+
         a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 1 }))
         a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 2 }))
+
+        window.removeEventListener('click', preventNav);
 
         await new Promise(r => setTimeout(r, 0))
         expect(called).toBe(0)
@@ -158,7 +170,7 @@ describe('Router', () => {
         let called = 0
         router.add(/^x$/, function () { called++ })
         document.body.innerHTML = [
-            '<a id="b" href="/x" target="_blank">X</a>',
+            '<a id="b" href="/x" target="_blank" rel="noopener noreferrer">X</a>',
             '<a id="d" href="/x" download>Xd</a>',
             '<a id="n" href="/x" rel="noreferrer">Xn</a>'
         ].join('')
@@ -169,9 +181,15 @@ describe('Router', () => {
 
         const spy = vi.spyOn(history, 'pushState')
 
+        // Prevent jsdom navigation error
+        const preventNav = (e: Event) => e.preventDefault();
+        window.addEventListener('click', preventNav);
+
         b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
         d.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
         n.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+        window.removeEventListener('click', preventNav);
 
         await new Promise(r => setTimeout(r, 0))
         expect(called).toBe(0)
@@ -188,7 +206,14 @@ describe('Router', () => {
         router.listen('history')
         const spy = vi.spyOn(history, 'pushState')
 
+        // Prevent jsdom navigation error
+        const preventNav = (e: Event) => e.preventDefault();
+        window.addEventListener('click', preventNav);
+
         a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+        window.removeEventListener('click', preventNav);
+
         await new Promise(r => setTimeout(r, 0))
         expect(called).toBe(0)
         expect(spy).not.toHaveBeenCalled()
@@ -219,7 +244,15 @@ describe('Router', () => {
         const a = document.getElementById('s') as HTMLAnchorElement
         router.listen('history')
         const spy = vi.spyOn(history, 'pushState')
+
+        // Prevent jsdom navigation error
+        const preventNav = (e: Event) => e.preventDefault();
+        window.addEventListener('click', preventNav);
+
         a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+        window.removeEventListener('click', preventNav);
+
         await new Promise(r => setTimeout(r, 0))
         expect(called).toBe(0)
         expect(spy).not.toHaveBeenCalled()
@@ -234,7 +267,15 @@ describe('Router', () => {
         const a = document.getElementById('u') as HTMLAnchorElement
         router.listen('history')
         router.unlisten()
+
+        // Prevent jsdom navigation error
+        const preventNav = (e: Event) => e.preventDefault();
+        window.addEventListener('click', preventNav);
+
         a.click()
+
+        window.removeEventListener('click', preventNav);
+
         await new Promise(r => setTimeout(r, 0))
         expect(count).toBe(0)
     })

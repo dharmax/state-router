@@ -75,9 +75,28 @@ describe('Router Improvements', () => {
 
         // 2. Start on a non-routable URL, should go to default
         history.pushState({}, '', '/unmatched');
+        
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         sm.restoreState('home');
+        
         await new Promise(r => setTimeout(r, 0));
         expect(sm.getState().name).toBe('home');
         expect(window.location.pathname).toBe('/home');
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No routing found'));
+        warnSpy.mockRestore();
+    });
+
+    it('4.3: staticFilters allows custom filters (compatibility check)', async () => {
+        const router = createRouter();
+        let called = false;
+        router.add(/^ignore-me$/, () => { called = true; });
+        
+        // Add a filter that ignores "ignore-me"
+        // Legacy behavior: return true to ignore
+        router.staticFilters.push(url => url.includes('ignore-me'));
+
+        const handled = router.handleChange('ignore-me');
+        expect(handled).toBe(false);
+        expect(called).toBe(false);
     });
 });

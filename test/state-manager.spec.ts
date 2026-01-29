@@ -137,4 +137,57 @@ describe('StateManager', () => {
         expect(sm.getState().name).toBe('user')
         expect(sm.context).toEqual({ id: '555' })
     })
+
+    it('stop() unlistens the router', () => {
+        const router = createRouter()
+        const spy = vi.spyOn(router, 'unlisten')
+        const sm = createStateManager('hash', true, router)
+        sm.stop()
+        expect(spy).toHaveBeenCalled()
+    })
+
+    it('state setter navigates to new state', async () => {
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
+        sm.addState('foo', 'foo', /^foo$/)
+        
+        sm.state = 'foo'
+        await new Promise(r => setTimeout(r, 0))
+        expect(sm.getState().name).toBe('foo')
+
+        sm.addState('bar', 'bar', /^bar$/)
+        sm.state = ['bar', { some: 'context' }]
+        await new Promise(r => setTimeout(r, 0))
+        expect(sm.getState().name).toBe('bar')
+        expect(sm.context).toEqual({ some: 'context' })
+    })
+
+    it('onExit hook is called before transition', async () => {
+        const router = createRouter()
+        const sm = createStateManager('hash', false, router)
+        let exitCalled = false
+        
+        sm.addState('a', 'a', /^a$/)
+        sm.addState('b', 'b', /^b$/)
+        
+        sm.onExit('a', async () => { exitCalled = true })
+        
+        await sm.setState('a')
+        expect(sm.getState().name).toBe('a')
+        
+        await sm.setState('b')
+        expect(exitCalled).toBe(true)
+        expect(sm.getState().name).toBe('b')
+    })
+
+    it('autostart=false does not listen immediately', () => {
+        const router = createRouter()
+        const spy = vi.spyOn(router, 'listen')
+        createStateManager('hash', false, router)
+        expect(spy).not.toHaveBeenCalled()
+        
+        const sm2 = createStateManager('hash', true, router)
+        expect(spy).toHaveBeenCalled()
+        sm2.stop()
+    })
 })

@@ -1,6 +1,6 @@
 {
   "name": "@dharmax/state-router",
-  "version": "3.2.1",
+  "version": "4.0.1",
   "description": "A cute and tight router and application state controller",
   "type": "module",
   "main": "dist-cjs/index.cjs",
@@ -16,7 +16,7 @@
   },
 
   "scripts": {
-    "test": "vitest run --coverage",
+    "test": "vitest run --coverage && sed -i \"s/<a name='/<a id='/g\" coverage/*.html",
     "test:watch": "vitest",
     "build": "npm run build:esm && npm run build:cjs",
     "build:esm": "npx tsc",
