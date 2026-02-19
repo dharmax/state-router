@@ -335,4 +335,41 @@ describe('Router', () => {
         expect(spyPush).not.toHaveBeenCalled()
         router.unlisten()
     })
+
+    it('does NOT intercept clicks for paths that have no matching route', async () => {
+        const router = createRouter()
+        router.add('/some-other-route', () => {})
+        
+        const apiPath = '/api/v1/resource'
+        document.body.innerHTML = `<a id="api-link" href="${apiPath}">API Call</a>`
+        const link = document.getElementById('api-link') as HTMLAnchorElement
+        
+        router.listen('history')
+
+        // Mock window navigation to prevent jsdom "Not implemented" error if the router DOES NOT intercept
+        const originalLocation = window.location
+        delete (window as any).location
+        // @ts-ignore
+        window.location = { 
+            ...originalLocation, 
+            assign: vi.fn(), 
+            href: 'http://localhost/',
+            origin: 'http://localhost' 
+        }
+
+        const event = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true
+        })
+        const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+
+        link.dispatchEvent(event)
+        
+        await new Promise(r => setTimeout(r, 0))
+
+        window.location = originalLocation
+        router.unlisten()
+
+        expect(preventDefaultSpy).not.toHaveBeenCalled()
+    })
 })

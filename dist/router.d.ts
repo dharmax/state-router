@@ -10,6 +10,7 @@ export declare class Router {
     add(pattern: RegExp | string | RouteHandler, handler?: RouteHandler): Router;
     onNotFound(handler: (path: string) => void): Router;
     setDecodeParams(decode: boolean): Router;
+    willHandle(path: string): boolean;
     getQueryParams(search?: string): Record<string, string>;
     /**
      *

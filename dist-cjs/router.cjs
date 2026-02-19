@@ -82,6 +82,22 @@ class Router {
         this.#decodeParams = decode;
         return this;
     }
+    willHandle(path) {
+        path = decodeURI(path);
+        path = this.#clearQuery(path);
+        path = path.replace(/^\//, '');
+        if (this.#root !== '/' && this.#rootCompare && path.startsWith(this.#rootCompare)) {
+            path = path.slice(this.#rootCompare.length);
+        }
+        path = this.#cleanPathString(path);
+        if (this.#isStaticFile(path))
+            return false;
+        for (const route of this.#routes) {
+            if (route.pattern && route.pattern.test(path))
+                return true;
+        }
+        return !!this.#notFoundHandler;
+    }
     getQueryParams(search) {
         if (!this.#isBrowser() && !search)
             return {};
@@ -195,6 +211,9 @@ class Router {
                 return;
             const pathWithQuery = url.pathname + (url.search || '');
             if (self.#isStaticFile(pathWithQuery) || self.#isStaticFile(url.pathname))
+                return;
+            // Only intercept if we have a handler for this route
+            if (!self.willHandle(pathWithQuery))
                 return;
             event.preventDefault();
             history.pushState({ path: pathWithQuery }, '', pathWithQuery);
